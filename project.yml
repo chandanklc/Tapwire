@@ -76,7 +76,7 @@ targets:
         product: Crypto
       - package: swift-asn1
         product: SwiftASN1
-      - sdk: Compression.framework
+      - sdk: libcompression.tbd
       - sdk: Security.framework
 
   Tapwire:

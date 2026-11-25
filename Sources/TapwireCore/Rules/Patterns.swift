@@ -15,6 +15,7 @@ public enum PatternKind: String, Codable, Sendable, CaseIterable, Identifiable {
 /// - A pattern without `://` is matched against the URL without its scheme.
 /// - A pattern without `?` also matches the URL with its query string removed.
 /// - A pattern that is just a host (no `/`) matches every path on that host.
+/// - A pattern without a port matches any port.
 ///
 /// Regex rules use `NSRegularExpression`, case-insensitive, and match anywhere in the full URL.
 public struct URLPattern: Codable, Hashable, Sendable {
@@ -43,16 +44,16 @@ public struct URLPattern: Codable, Hashable, Sendable {
             if !afterScheme.contains("/") && !afterScheme.contains("?") {
                 effective += "/*"
             }
-            let candidates: [String]
-            if hasScheme {
-                candidates = [url.string, url.stringWithoutQuery]
-            } else {
-                candidates = [url.stringWithoutScheme, url.authority + url.path]
-            }
+            // Patterns without a port match any port: also try the URL with the port removed.
+            let bareHost = url.host.contains(":") ? "[\(url.host)]" : url.host
+            let patternHasPort = afterScheme.prefix { $0 != "/" && $0 != "?" }.contains(":")
+            var hosts = [url.authority]
+            if !patternHasPort && url.authority != bareHost { hosts.append(bareHost) }
             let checkQueryless = !p.contains("?")
-            for (i, c) in candidates.enumerated() {
-                if i == 1 && !checkQueryless { continue }
-                if Glob.matches(effective, c) { return true }
+            for host in hosts {
+                let prefix = hasScheme ? "\(url.scheme)://\(host)" : host
+                if Glob.matches(effective, prefix + url.requestTarget) { return true }
+                if checkQueryless && Glob.matches(effective, prefix + url.path) { return true }
             }
             return false
         }
