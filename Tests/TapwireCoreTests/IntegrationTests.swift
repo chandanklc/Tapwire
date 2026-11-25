@@ -158,4 +158,76 @@ final class IntegrationTests: XCTestCase {
         let (code, _) = try curl("http://127.0.0.1:1/nothing")
         XCTAssertEqual(code, 502)
     }
+
+    func testLargeBodyStreamsAndPreviewIsTruncated() throws {
+        configure { $0.captureBodyLimit = 1024 * 1024; $0.memoryBodyLimit = 50 * 1024 * 1024 }
+        let n = 60 * 1024 * 1024
+        let out = root.appendingPathComponent("big.bin")
+        let (code, _) = try curl("http://127.0.0.1:\(httpServer.port)/bytes/\(n)", extra: ["-o", out.path])
+        XCTAssertEqual(code, 200)
+        let size = (try FileManager.default.attributesOfItem(atPath: out.path)[.size] as? Int) ?? 0
+        XCTAssertEqual(size, n, "everything is forwarded")
+        let ex = captured.all.first { $0.request.url.contains("/bytes/") && $0.state == .completed }
+        XCTAssertEqual(ex?.response?.bodySize, n)
+        XCTAssertEqual(ex?.response?.body.count, 1024 * 1024)
+        XCTAssertEqual(ex?.response?.bodyTruncated, true)
+    }
+
+    func testLargeBodyThroughResponseRuleSpillsToDisk() throws {
+        // A response rule forces buffering; 60 MB exceeds the 50 MB memory limit and must spill but still arrive.
+        var rule = MockRule(name: "Hdr", match: RuleMatch("*/bytes/*"), mode: .modify)
+        rule.responseModification.headerEdits = [NameValueEdit(op: .add, name: "X-Big", value: "1")]
+        configure { $0.mockGroups = [MockGroup(name: "G", rules: [rule])] }
+        let n = 60 * 1024 * 1024
+        let out = root.appendingPathComponent("big2.bin")
+        let (code, _) = try curl("http://127.0.0.1:\(httpServer.port)/bytes/\(n)", extra: ["-o", out.path])
+        XCTAssertEqual(code, 200)
+        let size = (try FileManager.default.attributesOfItem(atPath: out.path)[.size] as? Int) ?? 0
+        XCTAssertEqual(size, n)
+    }
+
+    func testGzipForwardedUnchanged() throws {
+        configure { _ in }
+        let (code, body) = try curl("http://127.0.0.1:\(httpServer.port)/gzip", extra: ["--compressed"])
+        XCTAssertEqual(code, 200)
+        XCTAssertEqual(body, #"{"compressed":true}"#)
+        let ex = captured.all.first { $0.request.url.hasSuffix("/gzip") && $0.state == .completed }
+        XCTAssertEqual(ex?.response?.headers.contentEncoding, "gzip", "original encoding forwarded")
+        XCTAssertEqual(BodyText.decodedBody(ex!.response!.body, headers: ex!.response!.headers), Data(#"{"compressed":true}"#.utf8))
+    }
+
+    final class EditingBreakpoints: BreakpointHandler, @unchecked Sendable {
+        func pauseRequest(_ info: PausedCallInfo, request: EditableRequest) async -> BreakpointDecision<EditableRequest> {
+            var r = request
+            r.url = r.url.replacingOccurrences(of: "/before", with: "/after")
+            r.headers.set("X-Edited", "yes")
+            return .execute(r)
+        }
+        func pauseResponse(_ info: PausedCallInfo, request: EditableRequest, response: EditableResponse) async -> BreakpointDecision<EditableResponse> {
+            var r = response
+            r.status = 299
+            r.body = Data("edited body".utf8)
+            return .execute(r)
+        }
+    }
+
+    func testBreakpointEditsRequestAndResponseOverHTTPS() throws {
+        let handler = EditingBreakpoints()
+        engine.pipeline.breakpointHandler = handler
+        configure { $0.breakpoints = [BreakpointRule(name: "BP", match: RuleMatch("localhost/before"), phase: .both)] }
+        let (code, body) = try curl("https://localhost:\(httpsServer.port)/before")
+        XCTAssertEqual(code, 299)
+        XCTAssertEqual(body, "edited body")
+        // Other traffic flows while a breakpoint exists for a different URL.
+        let (code2, _) = try curl("https://localhost:\(httpsServer.port)/other")
+        XCTAssertEqual(code2, 200)
+    }
+
+    func testKeepAliveMultipleRequestsOneConnection() throws {
+        configure { _ in }
+        let u = "http://127.0.0.1:\(httpServer.port)"
+        let (code, body) = try curl("\(u)/one", extra: ["\(u)/two"])
+        XCTAssertEqual(code, 200)
+        XCTAssertTrue(body.contains("/one") && body.contains("/two"))
+    }
 }

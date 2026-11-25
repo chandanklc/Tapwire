@@ -75,6 +75,35 @@ private final class EchoHandler: ChannelInboundHandler {
                 JSONMember("body", .string(bodyText)),
                 JSONMember("data", .object([JSONMember("user", .object([JSONMember("name", .string("Real Name"))]))])),
             ]).serialized()
+            if h.uri.hasPrefix("/bytes/"), let n = Int(h.uri.dropFirst(7)) {
+                // Streams n bytes of 'x' in 1 MB chunks (tests large bodies).
+                var out = HTTPHeaders()
+                out.add(name: "Content-Type", value: "application/octet-stream")
+                out.add(name: "Content-Length", value: String(n))
+                context.write(wrapOutboundOut(.head(HTTPResponseHead(version: .http1_1, status: .ok, headers: out))), promise: nil)
+                var sent = 0
+                let chunk = context.channel.allocator.buffer(repeating: UInt8(ascii: "x"), count: 1 << 20)
+                while sent < n {
+                    let size = min(1 << 20, n - sent)
+                    context.write(wrapOutboundOut(.body(.byteBuffer(chunk.getSlice(at: 0, length: size)!))), promise: nil)
+                    sent += size
+                }
+                context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
+                head = nil
+                return
+            }
+            if h.uri.hasPrefix("/gzip") {
+                let gz = BodyDecoder.gzip(Data(#"{"compressed":true}"#.utf8)) ?? Data()
+                var out = HTTPHeaders()
+                out.add(name: "Content-Type", value: "application/json")
+                out.add(name: "Content-Encoding", value: "gzip")
+                out.add(name: "Content-Length", value: String(gz.count))
+                context.write(wrapOutboundOut(.head(HTTPResponseHead(version: .http1_1, status: .ok, headers: out))), promise: nil)
+                context.write(wrapOutboundOut(.body(.byteBuffer(context.channel.allocator.buffer(bytes: gz)))), promise: nil)
+                context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
+                head = nil
+                return
+            }
             var status = HTTPResponseStatus.ok
             if h.uri.hasPrefix("/status/"), let code = Int(h.uri.dropFirst(8).prefix(3)) {
                 status = HTTPResponseStatus(statusCode: code)
