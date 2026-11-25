@@ -54,7 +54,10 @@ final class AppModel {
         }
         traffic.maxEntries = settings.maxEntries
         applyTheme()
-        breakpointsCoordinator.onPause = { [weak self] in self?.openWindow?(WindowID.breakpoints) }
+        breakpointsCoordinator.onPause = { [weak self] in
+            NSApp.activate(ignoringOtherApps: true)
+            self?.openWindow?(WindowID.breakpoints)
+        }
     }
 
     static func defaultSettings() -> AppSettings {
