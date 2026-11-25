@@ -202,6 +202,41 @@ public final class CertificateAuthority: @unchecked Sendable {
 
     public var leafPrivateKeyPEM: String { leafKey.pemRepresentation }
 
+    /// Facts about a generated leaf, for display and tests.
+    public struct LeafInfo: Sendable {
+        public var dnsNames: [String]
+        public var ipAddresses: [String]
+        public var isCA: Bool
+        public var issuedByThisCA: Bool
+        public var validityDays: Int
+        public var hasServerAuth: Bool
+    }
+
+    public func leafInfo(for host: String) throws -> LeafInfo {
+        let leaf = try leafCertificate(for: host)
+        var dns: [String] = []
+        var ips: [String] = []
+        let sans: [GeneralName] = (try leaf.extensions.subjectAlternativeNames).map { Array($0) } ?? []
+        for name in sans {
+            switch name {
+            case .dnsName(let d): dns.append(d)
+            case .ipAddress(let bytes):
+                let b = Array(bytes.bytes)
+                ips.append(b.count == 4 ? b.map(String.init).joined(separator: ".") : b.map { String(format: "%02x", $0) }.joined())
+            default: break
+            }
+        }
+        let isCA = (try? leaf.extensions.basicConstraints).map { bc -> Bool in
+            if case .isCertificateAuthority = bc { return true }
+            return false
+        } ?? false
+        let signedByUs = certificate.publicKey.isValidSignature(leaf.signature, for: leaf)
+        let eku = (try? leaf.extensions.extendedKeyUsage).map { $0.contains(.serverAuth) } ?? false
+        let days = Int(leaf.notValidAfter.timeIntervalSince(leaf.notValidBefore) / 86_400)
+        return LeafInfo(dnsNames: dns, ipAddresses: ips, isCA: isCA, issuedByThisCA: signedByUs && leaf.issuer == certificate.subject,
+                        validityDays: days, hasServerAuth: eku)
+    }
+
     private func makeLeaf(for host: String) throws -> Certificate {
         let subject = try DistinguishedName {
             CommonName(String(host.prefix(64)))

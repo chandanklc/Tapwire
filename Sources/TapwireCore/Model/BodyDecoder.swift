@@ -31,9 +31,9 @@ public enum BodyDecoder {
 
     /// Decodes a body according to a Content-Encoding header value. Returns nil if it can't.
     public static func decode(_ data: Data, contentEncoding: String?) -> Data? {
+        guard canDecode(contentEncoding) else { return nil }
         let encodings = encoding(from: contentEncoding)
         if encodings.isEmpty { return data }
-        guard canDecode(contentEncoding) else { return nil }
         var current = data
         for enc in encodings.reversed() {
             guard let next = decode(current, encoding: enc) else { return nil }

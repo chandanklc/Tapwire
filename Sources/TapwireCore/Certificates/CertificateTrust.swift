@@ -56,6 +56,19 @@ public enum CertificateTrust {
         return false
     }
 
+    /// Validates a leaf against `caDER` as the only anchor, with Apple's SSL server policy for `host`.
+    public static func validateServerCertificate(leafDER: Data, caDER: Data, host: String) -> (Bool, String?) {
+        guard let leaf = secCertificate(leafDER), let ca = secCertificate(caDER) else { return (false, "bad DER") }
+        var trust: SecTrust?
+        guard SecTrustCreateWithCertificates([leaf, ca] as CFArray, SecPolicyCreateSSL(true, host as CFString), &trust) == errSecSuccess,
+              let trust else { return (false, "SecTrustCreate failed") }
+        SecTrustSetAnchorCertificates(trust, [ca] as CFArray)
+        SecTrustSetAnchorCertificatesOnly(trust, true)
+        var error: CFError?
+        let ok = SecTrustEvaluateWithError(trust, &error)
+        return (ok, error.map { CFErrorCopyDescription($0) as String })
+    }
+
     public static func status(der: Data) -> CertificateTrustStatus {
         if isTrusted(der: der) { return .trusted }
         return isInKeychain(der: der) ? .installedNotTrusted : .notInstalled
