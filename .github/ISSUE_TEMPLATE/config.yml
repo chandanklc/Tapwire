@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Setup help (iPhone, Android, certificates)
+    url: https://github.com/chandanklc/Tapwire#iphone-setup
+    about: Most connection problems are covered in the README setup sections.

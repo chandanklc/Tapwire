@@ -1,7 +1,19 @@
 # Tapwire
 
-Tapwire is a macOS HTTP/HTTPS debugging proxy for developers. Use it to watch, pause, edit, mock and
-redirect your app's API traffic (iPhone, Android phone, emulator or Simulator) and the Mac's own traffic.
+**A free, open-source HTTP/HTTPS debugging proxy for macOS.** Inspect, pause, edit and mock the API
+traffic of your iPhone, Android phone or emulator, iOS Simulator, or the Mac itself.
+
+[![Latest release](https://img.shields.io/github/v/release/chandanklc/Tapwire?color=1F4A38)](https://github.com/chandanklc/Tapwire/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/chandanklc/Tapwire/total?color=B08A47)](https://github.com/chandanklc/Tapwire/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-8C2F3C)](LICENSE)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-2F5677)
+![Swift](https://img.shields.io/badge/Swift-SwiftUI%20%2B%20SwiftNIO-F05138)
+
+![Tapwire main window](docs/design/main-light.png)
+
+**[Download the latest DMG](https://github.com/chandanklc/Tapwire/releases/latest)** · [iPhone setup](#iphone-setup) · [Android setup](#android-setup) · [Build from source](#build-and-run)
+
+## Features
 
 - Live traffic list with domain sidebar, saved show-only / hide domain lists, filters and search (URL, headers, bodies, WebSocket messages; regex)
 - HTTPS decryption (MITM) per host or for everything, with a per-Mac root certificate; HTTP/2 to apps
@@ -11,17 +23,27 @@ redirect your app's API traffic (iPhone, Android phone, emulator or Simulator) a
 - **Environments**: redirect hosts (prod → staging → local) with extra headers, switch in one click
 - Repeat, Compose, cURL, sessions (`.tapwire`), HAR 1.2 import/export, throttling, menu bar extra
 
+## How it compares
+
+| | Tapwire | Charles | Proxyman | mitmproxy |
+|---|---|---|---|---|
+| Price | Free | Paid licence | Free tier, paid Pro | Free |
+| Source code | Open (MIT) | Closed | Closed | Open (MIT) |
+| App | Native macOS (SwiftUI) | Java | Native macOS | Terminal / web UI |
+
+If Tapwire saves you time, a ⭐ on GitHub helps other developers find it.
+
 ## Design
 
 Tapwire's "British GT" look: racing green, sunset gold, burgundy and ivory, with light and dark modes.
 
-| Light | Dark |
+| Dark | Breakpoint paused |
 |---|---|
-| ![Main window, light](docs/design/main-light.png) | ![Main window, dark](docs/design/main-dark.png) |
+| ![Main window, dark](docs/design/main-dark.png) | ![Breakpoint paused](docs/design/breakpoint.png) |
 
-| Breakpoint paused | Connect a device |
-|---|---|
-| ![Breakpoint paused](docs/design/breakpoint.png) | ![Connect a device](docs/design/devices.png) |
+| Connect a device |
+|---|
+| ![Connect a device](docs/design/devices.png) |
 
 These are the approved design mockups (sample data). The app follows them closely; small details differ
 (for example, phones are listed by IP address, since that's all a proxy can see).
@@ -321,6 +343,10 @@ breakpoints and mocks work the same. Turn it off in **Settings → SSL Proxying*
 - Bodies larger than the memory limit (default 50 MB) are forwarded in full but can't be edited.
   Only the first preview MB (default 5) are shown.
 - Some apps ignore the Android Wi-Fi proxy (e.g. ones that set their own proxy or use raw sockets).
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
