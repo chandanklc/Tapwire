@@ -8,7 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		03C4FEAF48A69557F98C41BE /* JSONKeyPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42EF009D3BE0611E2745AAC4 /* JSONKeyPath.swift */; };
-		08775AED1C54749AA1EB99DE /* X509 in Frameworks */ = {isa = PBXBuildFile; productRef = 5F04F19FC19563252E01BE42 /* X509 */; };
+		08775AED1C54749AA1EB99DE /* NIOSSL in Frameworks */ = {isa = PBXBuildFile; productRef = 55A1BBE69C523582A2548862 /* NIOSSL */; };
+		0A400CA77A722737B503DED8 /* WebSocketTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067D6F748993BAB1712885B /* WebSocketTests.swift */; };
 		116041187AE09213734AB598 /* NIOHTTP1 in Frameworks */ = {isa = PBXBuildFile; productRef = F82379ED64854FF8353600AA /* NIOHTTP1 */; };
 		11E3EB8062FE43F77B2EEE2C /* ParsedURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD53544DBBCF93E391964DC /* ParsedURL.swift */; };
 		1543B08DC9A1DFF1388A0963 /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A154BE26868FC7523EAA33B4 /* IntegrationTests.swift */; };
@@ -20,7 +21,7 @@
 		23A7136BBE8967C8AD68687B /* StorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED465679ECDC8BC6DD30207 /* StorageTests.swift */; };
 		2818F357DE8279F81A6FF778 /* ClientConnectionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B031AEAA2173B6F85845C680 /* ClientConnectionHandler.swift */; };
 		2D43B7D3B2952D3308327C6B /* JSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D803D91BC2A2626C889FD08 /* JSONTests.swift */; };
-		31604A21A163E4D944005D5C /* SwiftASN1 in Frameworks */ = {isa = PBXBuildFile; productRef = 165DA5CCDA47EA5A47978AC4 /* SwiftASN1 */; };
+		31604A21A163E4D944005D5C /* X509 in Frameworks */ = {isa = PBXBuildFile; productRef = 5F04F19FC19563252E01BE42 /* X509 */; };
 		400BBB855FC9966A31286D96 /* RequestPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061555D8046A8EC3167F7D10 /* RequestPipeline.swift */; };
 		42123BE2A2FE540174DE01C3 /* NIOFoundationCompat in Frameworks */ = {isa = PBXBuildFile; productRef = 463E31CF4FD44B73B78E68F9 /* NIOFoundationCompat */; };
 		456188805220EA0AC93DF83C /* BreakpointEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60B565CB0ED4209F9A0F28DF /* BreakpointEditor.swift */; };
@@ -32,6 +33,7 @@
 		52A9B9E4DEF42B9F9E95A112 /* MainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A192627293CE254186342A9 /* MainWindow.swift */; };
 		56B92A5F0AA084A16759C135 /* HeaderField.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD764AF61F64EA889CD17B41 /* HeaderField.swift */; };
 		59C5708FEBC24426D474B98C /* TapwireApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0398216FF8150C8A81F0CE7 /* TapwireApp.swift */; };
+		5C9AB9738E1C71FC78DD738C /* WebSocketMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66A33F4CBC8213FAE3068474 /* WebSocketMessage.swift */; };
 		5F86F08037A46C271802900B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4662F4D9B3E17DE51053219 /* Assets.xcassets */; };
 		611D30B25F615ABEBBFB4334 /* TrafficStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9630972FF5C510EFB29449D /* TrafficStore.swift */; };
 		648296C430F89CEFC871CD4C /* TunnelHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97F06CB8882C21587A59699 /* TunnelHandlers.swift */; };
@@ -39,15 +41,16 @@
 		6BF65C502A34D4D51B662926 /* CertificateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B47528D5B378DD1D37848F7 /* CertificateTests.swift */; };
 		6E2518187E31A3AD4CA2FC38 /* CertificateTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5483E5CB1B28A325910EF1FC /* CertificateTrust.swift */; };
 		73F3EE07DBAB270C3A77B660 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52AFF0FDDEC2074EAE51829 /* JSONValue.swift */; };
+		77F5A77EEE9ADDFBEC0D4298 /* Crypto in Frameworks */ = {isa = PBXBuildFile; productRef = 33516492A1F1BD63718C8B6F /* Crypto */; };
 		7A4379B4CC71ED13C2391BD7 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A72D23AAC16B9EE8A8F9417 /* Components.swift */; };
-		7BEA73BDBF4C8B6D310CC66F /* NIOSSL in Frameworks */ = {isa = PBXBuildFile; productRef = 55A1BBE69C523582A2548862 /* NIOSSL */; };
+		7BEA73BDBF4C8B6D310CC66F /* NIOWebSocket in Frameworks */ = {isa = PBXBuildFile; productRef = C205316507870DE5B5B792E0 /* NIOWebSocket */; };
 		7E1C9BD8B8313F6C6EA2C7E4 /* CertificateAuthority.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7F9168F16427534B58DD564 /* CertificateAuthority.swift */; };
 		7E8802FAAF23D8BD3DB8D6B5 /* Upstream.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB08C789FD68D04BAD373A8 /* Upstream.swift */; };
 		803F1C9211848F7D1635E79E /* PipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0309D0928E2D17FD67C54BBE /* PipelineTests.swift */; };
 		86A477EB9776C45FBEF7DAEB /* BodyDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314779221C97DFF6BDD1D2D7 /* BodyDecoder.swift */; };
 		8840EFBA37493BE169A3E714 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ADB7C00B0014D21A00CA025C /* Security.framework */; };
 		8B029D9D1F72EB6F56AF167F /* NIOTLS in Frameworks */ = {isa = PBXBuildFile; productRef = 946BD48A37A9C149CA159E6D /* NIOTLS */; };
-		9098D69A7057BA449643047B /* Crypto in Frameworks */ = {isa = PBXBuildFile; productRef = 33516492A1F1BD63718C8B6F /* Crypto */; };
+		9098D69A7057BA449643047B /* NIOExtras in Frameworks */ = {isa = PBXBuildFile; productRef = 280258B51D768BE79E0BFF8C /* NIOExtras */; };
 		994B10C79A946A054D19C1A4 /* libcompression.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 21D166261982D08CED55DA48 /* libcompression.tbd */; };
 		9A92430650763CD2A05A18D7 /* Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC10AD5B17F2942B3E5901A2 /* Body.swift */; };
 		A52CED2E8CAA52BA76F659BC /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9109DDDDF6CA9207137946E5 /* AppPaths.swift */; };
@@ -59,7 +62,8 @@
 		C1C691F05ECA120C5DF2A6AF /* CertificatesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55A6F76FE65A1E46F09D5C16 /* CertificatesWindow.swift */; };
 		C968EBCBB0D68EC9346A3D81 /* ProxyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0045036F4FC87A64B8D7A7 /* ProxyEngine.swift */; };
 		CA0D53B22DCBB3D8C65B3BF0 /* PatternTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C773736A806B675B2C8A5AD0 /* PatternTests.swift */; };
-		D5AE6597FDE283664E2E8253 /* NIOExtras in Frameworks */ = {isa = PBXBuildFile; productRef = 280258B51D768BE79E0BFF8C /* NIOExtras */; };
+		D3FC47332B541A140EA8BBEF /* SwiftASN1 in Frameworks */ = {isa = PBXBuildFile; productRef = 165DA5CCDA47EA5A47978AC4 /* SwiftASN1 */; };
+		D5AE6597FDE283664E2E8253 /* NIOHTTP2 in Frameworks */ = {isa = PBXBuildFile; productRef = CCF29E781355F3437C33510B /* NIOHTTP2 */; };
 		D75DF088357156F9C39AF2CB /* ComposeWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F5B1E88A050F5E4040E3EE /* ComposeWindow.swift */; };
 		DBA7ABE65507B7CCAF427498 /* Inspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97542BB7C0B13E5979EC5C8 /* Inspector.swift */; };
 		DD3139CDA5C343491298357B /* WebSocketBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACA3AD9AEDCB0E5DEE0BDD4 /* WebSocketBridge.swift */; };
@@ -134,8 +138,10 @@
 		58F5B1E88A050F5E4040E3EE /* ComposeWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeWindow.swift; sourceTree = "<group>"; };
 		5A00038F417CA97635ABEFBA /* Exporters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exporters.swift; sourceTree = "<group>"; };
 		60B565CB0ED4209F9A0F28DF /* BreakpointEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakpointEditor.swift; sourceTree = "<group>"; };
+		66A33F4CBC8213FAE3068474 /* WebSocketMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketMessage.swift; sourceTree = "<group>"; };
 		6890A23811ACA4D7B1CA3653 /* EchoServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EchoServer.swift; sourceTree = "<group>"; };
 		68C651360C265FCB70E8D907 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		7067D6F748993BAB1712885B /* WebSocketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketTests.swift; sourceTree = "<group>"; };
 		75E73C80C98499C365E99886 /* TapwireCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TapwireCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		783DF2D01750441872A5F926 /* RuleModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleModels.swift; sourceTree = "<group>"; };
 		7BCB226123084E4F09674EAA /* TapwireCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TapwireCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -196,11 +202,13 @@
 				8B029D9D1F72EB6F56AF167F /* NIOTLS in Frameworks */,
 				1E0CA0F4F03DF908C64BE43B /* NIOConcurrencyHelpers in Frameworks */,
 				42123BE2A2FE540174DE01C3 /* NIOFoundationCompat in Frameworks */,
-				7BEA73BDBF4C8B6D310CC66F /* NIOSSL in Frameworks */,
-				D5AE6597FDE283664E2E8253 /* NIOExtras in Frameworks */,
-				08775AED1C54749AA1EB99DE /* X509 in Frameworks */,
-				9098D69A7057BA449643047B /* Crypto in Frameworks */,
-				31604A21A163E4D944005D5C /* SwiftASN1 in Frameworks */,
+				7BEA73BDBF4C8B6D310CC66F /* NIOWebSocket in Frameworks */,
+				D5AE6597FDE283664E2E8253 /* NIOHTTP2 in Frameworks */,
+				08775AED1C54749AA1EB99DE /* NIOSSL in Frameworks */,
+				9098D69A7057BA449643047B /* NIOExtras in Frameworks */,
+				31604A21A163E4D944005D5C /* X509 in Frameworks */,
+				77F5A77EEE9ADDFBEC0D4298 /* Crypto in Frameworks */,
+				D3FC47332B541A140EA8BBEF /* SwiftASN1 in Frameworks */,
 				994B10C79A946A054D19C1A4 /* libcompression.tbd in Frameworks */,
 				8840EFBA37493BE169A3E714 /* Security.framework in Frameworks */,
 			);
@@ -320,6 +328,7 @@
 				C773736A806B675B2C8A5AD0 /* PatternTests.swift */,
 				0309D0928E2D17FD67C54BBE /* PipelineTests.swift */,
 				2ED465679ECDC8BC6DD30207 /* StorageTests.swift */,
+				7067D6F748993BAB1712885B /* WebSocketTests.swift */,
 			);
 			path = TapwireCoreTests;
 			sourceTree = "<group>";
@@ -375,6 +384,7 @@
 				FD764AF61F64EA889CD17B41 /* HeaderField.swift */,
 				A52AFF0FDDEC2074EAE51829 /* JSONValue.swift */,
 				EBD53544DBBCF93E391964DC /* ParsedURL.swift */,
+				66A33F4CBC8213FAE3068474 /* WebSocketMessage.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -401,6 +411,8 @@
 				946BD48A37A9C149CA159E6D /* NIOTLS */,
 				D64A63E10CA34220DF71CB06 /* NIOConcurrencyHelpers */,
 				463E31CF4FD44B73B78E68F9 /* NIOFoundationCompat */,
+				C205316507870DE5B5B792E0 /* NIOWebSocket */,
+				CCF29E781355F3437C33510B /* NIOHTTP2 */,
 				55A1BBE69C523582A2548862 /* NIOSSL */,
 				280258B51D768BE79E0BFF8C /* NIOExtras */,
 				5F04F19FC19563252E01BE42 /* X509 */,
@@ -490,6 +502,7 @@
 				C9880DA0B05467EB20CBD263 /* XCRemoteSwiftPackageReference "swift-crypto" */,
 				EAFB9526F9E2543B9A328477 /* XCRemoteSwiftPackageReference "swift-nio" */,
 				0C916D751958067A3565FF38 /* XCRemoteSwiftPackageReference "swift-nio-extras" */,
+				CBBE01452A9B92DB288A5D72 /* XCRemoteSwiftPackageReference "swift-nio-http2" */,
 				1CA295147E8309E8400CAA2B /* XCRemoteSwiftPackageReference "swift-nio-ssl" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -547,6 +560,7 @@
 				648296C430F89CEFC871CD4C /* TunnelHandlers.swift in Sources */,
 				7E8802FAAF23D8BD3DB8D6B5 /* Upstream.swift in Sources */,
 				DD3139CDA5C343491298357B /* WebSocketBridge.swift in Sources */,
+				5C9AB9738E1C71FC78DD738C /* WebSocketMessage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -579,6 +593,7 @@
 				CA0D53B22DCBB3D8C65B3BF0 /* PatternTests.swift in Sources */,
 				803F1C9211848F7D1635E79E /* PipelineTests.swift in Sources */,
 				23A7136BBE8967C8AD68687B /* StorageTests.swift in Sources */,
+				0A400CA77A722737B503DED8 /* WebSocketTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -907,6 +922,14 @@
 				minimumVersion = 3.7.0;
 			};
 		};
+		CBBE01452A9B92DB288A5D72 /* XCRemoteSwiftPackageReference "swift-nio-http2" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-nio-http2.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.30.0;
+			};
+		};
 		EAFB9526F9E2543B9A328477 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-nio.git";
@@ -978,6 +1001,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = EAFB9526F9E2543B9A328477 /* XCRemoteSwiftPackageReference "swift-nio" */;
 			productName = NIOTLS;
+		};
+		C205316507870DE5B5B792E0 /* NIOWebSocket */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EAFB9526F9E2543B9A328477 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOWebSocket;
+		};
+		CCF29E781355F3437C33510B /* NIOHTTP2 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CBBE01452A9B92DB288A5D72 /* XCRemoteSwiftPackageReference "swift-nio-http2" */;
+			productName = NIOHTTP2;
 		};
 		D64A63E10CA34220DF71CB06 /* NIOConcurrencyHelpers */ = {
 			isa = XCSwiftPackageProductDependency;

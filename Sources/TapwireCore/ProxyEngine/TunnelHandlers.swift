@@ -12,6 +12,8 @@ final class GlueHandler: ChannelDuplexHandler, RemovableChannelHandler {
     private var pendingRead = false
     private(set) var bytesRead = 0
     var onClose: ((Int) -> Void)?
+    /// Sees every buffer read from this side before it is forwarded (WebSocket message capture).
+    var onRead: ((ByteBuffer) -> Void)?
 
     static func pair() -> (GlueHandler, GlueHandler) {
         let a = GlueHandler()
@@ -46,7 +48,9 @@ final class GlueHandler: ChannelDuplexHandler, RemovableChannelHandler {
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        bytesRead += unwrapInboundIn(data).readableBytes
+        let buf = unwrapInboundIn(data)
+        bytesRead += buf.readableBytes
+        onRead?(buf)
         partner?.partnerWrite(data)
     }
 

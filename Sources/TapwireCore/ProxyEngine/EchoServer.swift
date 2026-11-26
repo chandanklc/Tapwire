@@ -3,10 +3,13 @@ import NIOCore
 import NIOHTTP1
 import NIOPosix
 import NIOSSL
+import NIOWebSocket
 
 /// A small local HTTP/HTTPS echo server. Used by the integration tests, and handy for
 /// checking a setup by hand. It replies with JSON describing the request:
 /// `{"method":..,"path":..,"host":..,"headers":{..},"body":..,"server":"tapwire-echo","tls":bool}`.
+/// `/ws` accepts a WebSocket upgrade: it sends "hello" at once, answers each text message with
+/// "echo: <text>", answers pings, and echoes close frames.
 public final class EchoServer: @unchecked Sendable {
     private var channel: Channel?
     public private(set) var port: Int = 0
@@ -28,8 +31,19 @@ public final class EchoServer: @unchecked Sendable {
                 channel.eventLoop.makeCompletedFuture {
                     let sync = channel.pipeline.syncOperations
                     if let ctx { try sync.addHandler(NIOSSLServerHandler(context: ctx)) }
-                    try sync.configureHTTPServerPipeline(withErrorHandling: true)
-                    try sync.addHandler(EchoHandler(tls: ctx != nil))
+                    let upgrader = NIOWebSocketServerUpgrader(
+                        shouldUpgrade: { ch, head in
+                            ch.eventLoop.makeSucceededFuture(head.uri.hasPrefix("/ws") ? HTTPHeaders() : nil)
+                        },
+                        upgradePipelineHandler: { ch, _ in
+                            ch.eventLoop.makeCompletedFuture {
+                                ch.pipeline.removeHandler(name: "echo", promise: nil)
+                                try ch.pipeline.syncOperations.addHandler(WebSocketEchoHandler())
+                            }
+                        })
+                    try sync.configureHTTPServerPipeline(withServerUpgrade: (upgraders: [upgrader], completionHandler: { _ in }),
+                                                         withErrorHandling: true)
+                    try sync.addHandler(EchoHandler(tls: ctx != nil), name: "echo")
                 }
             }
         let ch = try await bootstrap.bind(host: "127.0.0.1", port: 0).get()
@@ -43,7 +57,7 @@ public final class EchoServer: @unchecked Sendable {
     }
 }
 
-private final class EchoHandler: ChannelInboundHandler {
+private final class EchoHandler: ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
 
@@ -117,5 +131,43 @@ private final class EchoHandler: ChannelInboundHandler {
             context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
             head = nil
         }
+    }
+}
+
+private final class WebSocketEchoHandler: ChannelInboundHandler {
+    typealias InboundIn = WebSocketFrame
+    typealias OutboundOut = WebSocketFrame
+
+    func handlerAdded(context: ChannelHandlerContext) {
+        // Greet shortly after the upgrade, once NIO has removed the HTTP handlers.
+        let channel = context.channel
+        context.eventLoop.scheduleTask(in: .milliseconds(20)) {
+            channel.writeAndFlush(WebSocketFrame(fin: true, opcode: .text, data: channel.allocator.buffer(string: "hello")), promise: nil)
+        }
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let frame = unwrapInboundIn(data)
+        var payload = frame.unmaskedData
+        switch frame.opcode {
+        case .text:
+            let text = payload.readString(length: payload.readableBytes) ?? ""
+            send(context, .text, "echo: \(text)")
+        case .binary:
+            context.writeAndFlush(wrapOutboundOut(WebSocketFrame(fin: true, opcode: .binary, data: payload)), promise: nil)
+        case .ping:
+            context.writeAndFlush(wrapOutboundOut(WebSocketFrame(fin: true, opcode: .pong, data: payload)), promise: nil)
+        case .connectionClose:
+            let channel = context.channel
+            context.writeAndFlush(wrapOutboundOut(WebSocketFrame(fin: true, opcode: .connectionClose, data: payload)))
+                .whenComplete { _ in channel.close(promise: nil) }
+        default:
+            break
+        }
+    }
+
+    private func send(_ context: ChannelHandlerContext, _ opcode: WebSocketOpcode, _ text: String) {
+        let buf = context.channel.allocator.buffer(string: text)
+        context.writeAndFlush(wrapOutboundOut(WebSocketFrame(fin: true, opcode: opcode, data: buf)), promise: nil)
     }
 }

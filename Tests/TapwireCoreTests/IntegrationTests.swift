@@ -230,4 +230,42 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(code, 200)
         XCTAssertTrue(body.contains("/one") && body.contains("/two"))
     }
+
+    /// Runs curl with its own -w format; returns stdout.
+    func curlRaw(_ args: [String]) throws -> String {
+        let caPath = root.appendingPathComponent("ca.pem").path
+        let base = ["-s", "-S", "--max-time", "15", "--noproxy", "", "--proxy", "http://127.0.0.1:\(proxyPort)", "--cacert", caPath]
+        let r = try ProcessRunner.runSync("/usr/bin/curl", base + args)
+        return r.stdout + r.stderr
+    }
+
+    func testHTTP2ToClientMultiplexed() throws {
+        configure { $0.http2Enabled = true }
+        let u = "https://localhost:\(httpsServer.port)"
+        let out = try curlRaw(["--http2", "-H", "Cookie: a=1", "-o", "/dev/null", "-w", "%{http_version} %{http_code}\n",
+                               "\(u)/h2/one", "-o", "/dev/null", "\(u)/h2/two"])
+        XCTAssertEqual(out.split(separator: "\n"), ["2 200", "2 200"], out)
+        let ex = captured.all.filter { $0.request.url.contains("/h2/") && $0.state == .completed }
+        XCTAssertEqual(ex.count, 2)
+        XCTAssertTrue(ex.allSatisfy { $0.request.httpVersion == "HTTP/2" })
+        XCTAssertEqual(ex.first?.request.headers.first?.name, "Host")
+    }
+
+    func testHTTP2PostBodyAndRules() throws {
+        var rule = MockRule(name: "H2 mod", match: RuleMatch("localhost/h2post"), mode: .modify)
+        rule.responseModification.status = 202
+        rule.responseModification.headerEdits = [NameValueEdit(op: .add, name: "X-H2", value: "yes")]
+        configure { $0.mockGroups = [MockGroup(name: "G", rules: [rule])] }
+        let out = try curlRaw(["--http2", "-i", "--suppress-connect-headers", "-X", "POST", "-d", "k=v", "https://localhost:\(httpsServer.port)/h2post"])
+        XCTAssertTrue(out.hasPrefix("HTTP/2 202"), out)
+        XCTAssertTrue(out.lowercased().contains("x-h2: yes"), out)
+        let jsonText = out.components(separatedBy: "\r\n\r\n").last ?? ""
+        XCTAssertEqual(try json(jsonText)["body"]?.stringValue, "k=v")
+    }
+
+    func testHTTP2CanBeTurnedOff() throws {
+        configure { $0.http2Enabled = false }
+        let out = try curlRaw(["--http2", "-o", "/dev/null", "-w", "%{http_version}", "https://localhost:\(httpsServer.port)/h1"])
+        XCTAssertEqual(out, "1.1")
+    }
 }

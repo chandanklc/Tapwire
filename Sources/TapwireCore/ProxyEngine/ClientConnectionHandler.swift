@@ -2,6 +2,7 @@ import Foundation
 import NIOCore
 import NIOFoundationCompat
 import NIOHTTP1
+import NIOHTTP2
 import NIOSSL
 import NIOTLS
 
@@ -17,23 +18,30 @@ final class ChannelResponseSink: ResponseSink, @unchecked Sendable {
     let keepAlive: Bool
     let liveness: ClientLiveness
     let isHEAD: Bool
+    /// The client channel is one HTTP/2 stream: no connection headers, and the stream ends on its own.
+    let isHTTP2: Bool
 
-    init(channel: Channel, keepAlive: Bool, liveness: ClientLiveness, isHEAD: Bool) {
+    init(channel: Channel, keepAlive: Bool, liveness: ClientLiveness, isHEAD: Bool, isHTTP2: Bool = false) {
         self.channel = channel
-        self.keepAlive = keepAlive
+        self.keepAlive = keepAlive || isHTTP2
         self.liveness = liveness
         self.isHEAD = isHEAD
+        self.isHTTP2 = isHTTP2
     }
 
     func writeHead(status: Int, reason: String, headers: [HeaderField]) async throws {
         var h = HTTPHeaders()
         for f in headers { h.add(name: f.name, value: f.value) }
-        if !keepAlive { h.replaceOrAdd(name: "Connection", value: "close") }
+        if isHTTP2 {
+            for name in HopByHop.names { h.remove(name: name) }
+        } else if !keepAlive {
+            h.replaceOrAdd(name: "Connection", value: "close")
+        }
         if isHEAD && !h.contains(name: "Content-Length") && !h.contains(name: "Transfer-Encoding") {
             h.add(name: "Content-Length", value: "0")
         }
-        let head = HTTPResponseHead(version: .http1_1, status: HTTPResponseStatus(statusCode: status, reasonPhrase: reason),
-                                    headers: h)
+        let head = HTTPResponseHead(version: isHTTP2 ? .http2 : .http1_1,
+                                    status: HTTPResponseStatus(statusCode: status, reasonPhrase: reason), headers: h)
         try await channel.writeAndFlush(HTTPServerResponsePart.head(head)).get()
     }
 
@@ -70,6 +78,8 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
 
     private let mode: Mode
     private let engine: ProxyEngine
+    /// This handler serves one HTTP/2 stream (one request) rather than an HTTP/1.1 connection.
+    private let isHTTP2Stream: Bool
     private var head: HTTPRequestHead?
     private var accumulator: BodyAccumulator?
     private var queue: [(PipelineRequest, Bool)] = []
@@ -79,9 +89,10 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
     private let liveness = ClientLiveness()
     private var upgrading = false
 
-    init(mode: Mode, engine: ProxyEngine) {
+    init(mode: Mode, engine: ProxyEngine, isHTTP2Stream: Bool = false) {
         self.mode = mode
         self.engine = engine
+        self.isHTTP2Stream = isHTTP2Stream
     }
 
     func handlerAdded(context: ChannelHandlerContext) { self.context = context }
@@ -134,10 +145,31 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
             return
         }
         headers.removeAll { $0.name.caseInsensitiveCompare("Proxy-Connection") == .orderedSame }
-        let req = PipelineRequest(method: h.method.rawValue, url: url, httpVersion: "HTTP/\(h.version.major).\(h.version.minor)",
+        if isHTTP2Stream { headers = Self.http1Headers(fromHTTP2: headers) }
+        let version = isHTTP2Stream ? "HTTP/2" : "HTTP/\(h.version.major).\(h.version.minor)"
+        let req = PipelineRequest(method: h.method.rawValue, url: url, httpVersion: version,
                                   headers: headers, body: body, isTLSDecrypted: isTLS, clientAddress: clientAddress)
-        queue.append((req, h.isKeepAlive))
+        queue.append((req, isHTTP2Stream || h.isKeepAlive))
         processNext()
+    }
+
+    /// HTTP/2 requests are forwarded as HTTP/1.1: the Host header goes first, and cookies the
+    /// client split across several headers are joined into one, as HTTP/1.1 requires.
+    static func http1Headers(fromHTTP2 headers: [HeaderField]) -> [HeaderField] {
+        var out: [HeaderField] = []
+        var cookies: [String] = []
+        var host: HeaderField?
+        for f in headers {
+            switch f.name.lowercased() {
+            case "host": if host == nil { host = HeaderField("Host", f.value) }
+            case "cookie": cookies.append(f.value)
+            case "te" where f.value.lowercased() == "trailers": continue
+            default: out.append(f)
+            }
+        }
+        if !cookies.isEmpty { out.append(HeaderField("Cookie", cookies.joined(separator: "; "))) }
+        if let host { out.insert(host, at: 0) }
+        return out
     }
 
     private var isTLS: Bool {
@@ -182,7 +214,8 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
         busy = true
         let (req, keepAlive) = queue.removeFirst()
         let channel = context.channel
-        let sink = ChannelResponseSink(channel: channel, keepAlive: keepAlive, liveness: liveness, isHEAD: req.method == "HEAD")
+        let sink = ChannelResponseSink(channel: channel, keepAlive: keepAlive, liveness: liveness, isHEAD: req.method == "HEAD",
+                                       isHTTP2: isHTTP2Stream)
         let engine = self.engine
         let bound = NIOLoopBound(self, eventLoop: context.eventLoop)
         let loop = context.eventLoop
@@ -256,13 +289,41 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
                         case .fallback: name = host
                         }
                         do {
-                            let sslContext = try engine.ca.serverContext(for: name)
+                            let http2 = engine.configuration.http2Enabled
+                            let sslContext = try engine.ca.serverContext(for: name, http2: http2)
                             let sync = channel.pipeline.syncOperations
                             try sync.addHandler(NIOSSLServerHandler(context: sslContext))
-                            try ProxyEngine.addHTTPServerHandlers(
-                                channel: channel,
-                                handler: ClientConnectionHandler(mode: .tunnelled(scheme: "https", host: host, port: port, tls: true),
-                                                                 engine: engine))
+                            guard http2 else {
+                                try ProxyEngine.addHTTPServerHandlers(
+                                    channel: channel,
+                                    handler: ClientConnectionHandler(mode: .tunnelled(scheme: "https", host: host, port: port, tls: true),
+                                                                     engine: engine))
+                                return channel.eventLoop.makeSucceededVoidFuture()
+                            }
+                            let failures = TLSFailureRecorder(engine: engine, host: host, port: port)
+                            let alpn = ApplicationProtocolNegotiationHandler { result, ch in
+                                failures.negotiated = true
+                                let mode = ClientConnectionHandler.Mode.tunnelled(scheme: "https", host: host, port: port, tls: true)
+                                if case .negotiated("h2") = result {
+                                    return ch.configureHTTP2Pipeline(mode: .server, position: .before(failures)) { stream in
+                                        stream.eventLoop.makeCompletedFuture {
+                                            let sync = stream.pipeline.syncOperations
+                                            try sync.addHandler(HTTP2FramePayloadToHTTP1ServerCodec())
+                                            try sync.addHandler(ClientConnectionHandler(mode: mode, engine: engine, isHTTP2Stream: true))
+                                        }
+                                    }.map { _ in }
+                                }
+                                return ch.eventLoop.makeCompletedFuture {
+                                    let sync = ch.pipeline.syncOperations
+                                    let handler = ClientConnectionHandler(mode: mode, engine: engine)
+                                    try sync.addHandler(HTTPResponseEncoder(), name: PipelineNames.encoder, position: .before(failures))
+                                    try sync.addHandler(ByteToMessageHandler(HTTPRequestDecoder(leftOverBytesStrategy: .forwardBytes)),
+                                                        name: PipelineNames.decoder, position: .before(failures))
+                                    try sync.addHandler(handler, name: PipelineNames.handler, position: .before(failures))
+                                }
+                            }
+                            try sync.addHandler(alpn)
+                            try sync.addHandler(failures)
                             return channel.eventLoop.makeSucceededVoidFuture()
                         } catch {
                             return channel.eventLoop.makeFailedFuture(error)
@@ -362,7 +423,7 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
-        if case .tunnelled(_, let host, let port, true) = mode, !sawRequest {
+        if case .tunnelled(_, let host, let port, true) = mode, !sawRequest, !isHTTP2Stream {
             engine.recordTLSFailure(host: host, port: port, error: error, clientAddress: clientAddress)
         } else if error is HTTPParserError, !busy {
             writeLocal(context: context, LocalResponder.text(400, "Malformed HTTP request"), keepAlive: false)
@@ -381,5 +442,34 @@ final class ClientConnectionHandler: ChannelInboundHandler, RemovableChannelHand
             return
         }
         context.fireUserInboundEventTriggered(event)
+    }
+}
+
+/// Sits at the end of a decrypted connection while ALPN is pending, so a failed TLS handshake
+/// (usually an untrusted CA or certificate pinning) is still recorded. Passes everything on
+/// once a protocol is chosen.
+final class TLSFailureRecorder: ChannelInboundHandler, RemovableChannelHandler {
+    typealias InboundIn = NIOAny
+
+    private let engine: ProxyEngine
+    private let host: String
+    private let port: Int
+    var negotiated = false
+
+    init(engine: ProxyEngine, host: String, port: Int) {
+        self.engine = engine
+        self.host = host
+        self.port = port
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        context.fireChannelRead(data)
+    }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        guard !negotiated else { context.fireErrorCaught(error); return }
+        negotiated = true
+        engine.recordTLSFailure(host: host, port: port, error: error, clientAddress: context.channel.remoteAddress?.ipAddress)
+        context.close(promise: nil)
     }
 }

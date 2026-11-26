@@ -134,6 +134,17 @@ struct PoolKey: Hashable, Sendable {
 
 /// One upstream HTTP/1.1 connection.
 final class UpstreamConnection: @unchecked Sendable {
+    static let encoderName = "tw.up.encoder"
+    static let validatorName = "tw.up.validator"
+    static let decoderName = "tw.up.decoder"
+
+    /// HTTP/1.1 client handlers, named so a WebSocket upgrade can take each one out again.
+    static func addHTTPHandlers(_ sync: ChannelPipeline.SynchronousOperations) throws {
+        try sync.addHandler(HTTPRequestEncoder(), name: encoderName)
+        try sync.addHandler(NIOHTTPRequestHeadersValidator(), name: validatorName)
+        try sync.addHandler(ByteToMessageHandler(HTTPResponseDecoder(leftOverBytesStrategy: .forwardBytes)), name: decoderName)
+    }
+
     let channel: Channel
     let reader: UpstreamReader
     let key: PoolKey
@@ -314,7 +325,7 @@ public final class NIOUpstreamTransport: UpstreamTransport, @unchecked Sendable 
         let reader = UpstreamReader()
         do {
             try await channel.eventLoop.submit {
-                try channel.pipeline.syncOperations.addHTTPClientHandlers(leftOverBytesStrategy: .forwardBytes)
+                try UpstreamConnection.addHTTPHandlers(channel.pipeline.syncOperations)
                 try channel.pipeline.syncOperations.addHandler(reader)
             }.get()
         } catch {

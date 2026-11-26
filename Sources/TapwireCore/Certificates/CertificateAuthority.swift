@@ -275,18 +275,20 @@ public final class CertificateAuthority: @unchecked Sendable {
         )
     }
 
-    /// TLS server context presenting a leaf for `host`, offering only HTTP/1.1 via ALPN.
-    func serverContext(for host: String) throws -> NIOSSLContext {
-        let key = host.lowercased()
+    /// TLS server context presenting a leaf for `host`. ALPN offers h2 and http/1.1 when
+    /// `http2` is true, otherwise only http/1.1.
+    func serverContext(for host: String, http2: Bool = false) throws -> NIOSSLContext {
+        let name = host.lowercased()
+        let key = (http2 ? "h2|" : "h1|") + name
         if let ctx = contexts.withLockedValue({ $0[key] }) { return ctx }
-        let leafDER = try leafCertificateDER(for: key)
+        let leafDER = try leafCertificateDER(for: name)
         let leafNIO = try NIOSSLCertificate(bytes: Array(leafDER), format: .der)
         let caNIO = try NIOSSLCertificate(bytes: Array(der), format: .der)
         var config = TLSConfiguration.makeServerConfiguration(
             certificateChain: [.certificate(leafNIO), .certificate(caNIO)],
             privateKey: .privateKey(leafKeyNIO)
         )
-        config.applicationProtocols = ["http/1.1"]
+        config.applicationProtocols = http2 ? ["h2", "http/1.1"] : ["http/1.1"]
         config.minimumTLSVersion = .tlsv1
         let ctx = try NIOSSLContext(configuration: config)
         contexts.withLockedValue { dict in

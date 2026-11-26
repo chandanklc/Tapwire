@@ -15,6 +15,9 @@ enum WebSocketBridge {
             let clock = Stopwatch()
             var url = url
             var headers = headers
+            // Ask for uncompressed frames so messages can be shown. permessage-deflate keeps its
+            // compression state across messages, so compressed frames can't be decoded one by one.
+            headers.removeAll { $0.name.caseInsensitiveCompare("Sec-WebSocket-Extensions") == .orderedSame }
             var ex = CapturedExchange(sequence: engine.pipeline.nextSequence(), kind: .websocket, isTLSDecrypted: isTLS,
                                       clientAddress: clientAddress,
                                       request: CapturedRequest(method: head.method.rawValue, url: url.string, headers: headers))
@@ -90,40 +93,32 @@ enum WebSocketBridge {
                 let rawResponse = raw
                 try await loop.flatSubmit { () -> EventLoopFuture<Void> in
                     let (clientGlue, serverGlue) = GlueHandler.pair()
-                    var counts = (sent: 0, received: 0, closed: 0)
-                    let done: () -> Void = {
-                        counts.closed += 1
-                        if counts.closed == 2 {
-                            var final = opened
-                            final.state = .completed
-                            final.bytesSent = counts.sent
-                            final.bytesReceived = counts.received
-                            final.timing.completed = clock.ms()
-                            engine.record(final)
-                        }
-                    }
-                    clientGlue.onClose = { counts.sent = $0; done() }
-                    serverGlue.onClose = { counts.received = $0; done() }
+                    let recorder = WebSocketRecorder(exchange: opened, engine: engine, clock: clock, loop: loop)
+                    clientGlue.onRead = { recorder.ingest($0, direction: .sent) }
+                    serverGlue.onRead = { recorder.ingest($0, direction: .received) }
+                    clientGlue.onClose = { recorder.sideClosed(bytes: $0, direction: .sent) }
+                    serverGlue.onClose = { recorder.sideClosed(bytes: $0, direction: .received) }
+                    // Everything below runs in one event-loop step, so no client frame can arrive while
+                    // the HTTP handlers are still in place. Removal runs immediately on the loop; the
+                    // upstream decoder hands any bytes it already holds (an early server frame) to the glue.
                     let up = conn.channel.pipeline
-                    return clientPipeline.removeHandler(name: PipelineNames.encoder)
-                        .flatMap { clientPipeline.removeHandler(name: PipelineNames.decoder) }
-                        .flatMap { clientPipeline.removeHandler(name: PipelineNames.handler) }
-                        .flatMap {
-                            var buf = client.allocator.buffer(capacity: rawResponse.utf8.count)
-                            buf.writeString(rawResponse)
-                            return client.writeAndFlush(buf)
-                        }
-                        .flatMapThrowing {
-                            try client.pipeline.syncOperations.addHandler(clientGlue)
-                            try up.syncOperations.addHandler(serverGlue)
-                        }
-                        .flatMap { up.removeHandler(conn.reader) }
-                        .flatMapThrowing { () -> (RemovableChannelHandler, RemovableChannelHandler) in
-                            let enc = try up.syncOperations.handler(type: HTTPRequestEncoder.self)
-                            let dec = try up.syncOperations.handler(type: ByteToMessageHandler<HTTPResponseDecoder>.self)
-                            return (enc, dec)
-                        }
-                        .flatMap { pair in up.removeHandler(pair.0).flatMap { up.removeHandler(pair.1) } }
+                    clientPipeline.removeHandler(name: PipelineNames.encoder, promise: nil)
+                    clientPipeline.removeHandler(name: PipelineNames.decoder, promise: nil)
+                    clientPipeline.removeHandler(name: PipelineNames.handler, promise: nil)
+                    var buf = client.allocator.buffer(capacity: rawResponse.utf8.count)
+                    buf.writeString(rawResponse)
+                    client.writeAndFlush(buf, promise: nil)
+                    do {
+                        try client.pipeline.syncOperations.addHandler(clientGlue)
+                        try up.syncOperations.addHandler(serverGlue)
+                        up.removeHandler(conn.reader, promise: nil)
+                        up.removeHandler(name: UpstreamConnection.validatorName, promise: nil)
+                        up.removeHandler(name: UpstreamConnection.encoderName, promise: nil)
+                        up.removeHandler(name: UpstreamConnection.decoderName, promise: nil)
+                    } catch {
+                        return loop.makeFailedFuture(error)
+                    }
+                    return loop.makeSucceededVoidFuture()
                 }.get()
             } catch {
                 ex.state = .failed
@@ -134,5 +129,69 @@ enum WebSocketBridge {
                 client.close(promise: nil)
             }
         }
+    }
+}
+
+/// Collects WebSocket messages for one connection on its event loop and records the exchange
+/// at most a few times a second.
+final class WebSocketRecorder {
+    static let maxMessages = 10_000
+    static let payloadLimit = 256 * 1024
+
+    private var exchange: CapturedExchange
+    private let engine: ProxyEngine
+    private let clock: Stopwatch
+    private let loop: EventLoop
+    private var parsers: [WebSocketMessage.Direction: WebSocketMessageParser] = [
+        .sent: WebSocketMessageParser(payloadLimit: WebSocketRecorder.payloadLimit),
+        .received: WebSocketMessageParser(payloadLimit: WebSocketRecorder.payloadLimit),
+    ]
+    private var flushScheduled = false
+    private var closedSides = 0
+
+    init(exchange: CapturedExchange, engine: ProxyEngine, clock: Stopwatch, loop: EventLoop) {
+        self.exchange = exchange
+        self.exchange.webSocketMessages = []
+        self.engine = engine
+        self.clock = clock
+        self.loop = loop
+    }
+
+    func ingest(_ buffer: ByteBuffer, direction: WebSocketMessage.Direction) {
+        guard var parser = parsers[direction] else { return }
+        let parsed = buffer.withUnsafeReadableBytes { parser.feed($0) }
+        parsers[direction] = parser
+        guard !parsed.isEmpty else { return }
+        let now = clock.ms()
+        var list = exchange.webSocketMessages ?? []
+        exchange.webSocketMessages = nil // keep the array uniquely referenced while appending
+        for m in parsed {
+            if list.count >= Self.maxMessages {
+                exchange.webSocketMessagesDropped = (exchange.webSocketMessagesDropped ?? 0) + 1
+                continue
+            }
+            list.append(WebSocketMessage(direction: direction, kind: m.kind, time: now, payload: m.payload, size: m.size,
+                                         truncated: m.truncated, compressed: m.compressed, closeCode: m.closeCode))
+        }
+        exchange.webSocketMessages = list
+        scheduleFlush()
+    }
+
+    private func scheduleFlush() {
+        guard !flushScheduled else { return }
+        flushScheduled = true
+        loop.scheduleTask(in: .milliseconds(150)) { [self] in
+            flushScheduled = false
+            if closedSides < 2 { engine.record(exchange) }
+        }
+    }
+
+    func sideClosed(bytes: Int, direction: WebSocketMessage.Direction) {
+        if direction == .sent { exchange.bytesSent = bytes } else { exchange.bytesReceived = bytes }
+        closedSides += 1
+        guard closedSides == 2 else { return }
+        exchange.state = .completed
+        exchange.timing.completed = clock.ms()
+        engine.record(exchange)
     }
 }

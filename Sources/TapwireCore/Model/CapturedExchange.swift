@@ -100,6 +100,10 @@ public struct CapturedExchange: Codable, Sendable, Identifiable, Hashable {
     public var error: String?
     public var bytesSent: Int
     public var bytesReceived: Int
+    /// WebSocket messages in both directions (nil for other kinds; optional so older session files still load).
+    public var webSocketMessages: [WebSocketMessage]?
+    /// Messages not kept because the per-connection limit was reached.
+    public var webSocketMessagesDropped: Int?
 
     public init(id: UUID = UUID(), sequence: Int, startedAt: Date = Date(), kind: ExchangeKind = .http,
                 state: ExchangeState = .pending, isTLSDecrypted: Bool = false, clientAddress: String? = nil,

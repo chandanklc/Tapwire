@@ -109,13 +109,15 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var pinnedDomains: [String] = []
     public var activeEnvironmentID: UUID?
     public var hasCompletedOnboarding: Bool = false
+    /// Offer HTTP/2 to clients in decrypted HTTPS connections (the server side stays HTTP/1.1).
+    public var http2Enabled: Bool = true
 
     public init() {}
 
     private enum K: String, CodingKey {
         case port, listenOnAllInterfaces, startProxyOnLaunch, sslEntries, decryptAll, externalProxy, memoryBodyLimitMB,
              captureBodyLimitMB, maxEntries, throttle, theme, breakpointsEnabled, verifyUpstreamCertificates, pinnedDomains,
-             activeEnvironmentID, hasCompletedOnboarding
+             activeEnvironmentID, hasCompletedOnboarding, http2Enabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -137,6 +139,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         pinnedDomains = try c.decodeIfPresent([String].self, forKey: .pinnedDomains) ?? d.pinnedDomains
         activeEnvironmentID = try c.decodeIfPresent(UUID.self, forKey: .activeEnvironmentID)
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
+        http2Enabled = try c.decodeIfPresent(Bool.self, forKey: .http2Enabled) ?? d.http2Enabled
     }
 }
 
@@ -156,6 +159,7 @@ public struct EngineConfiguration: Sendable {
     public var verifyUpstreamCertificates = true
     public var recording = true
     public var connectTimeout: TimeInterval = 15
+    public var http2Enabled = true
 
     public init() {}
 
@@ -173,6 +177,7 @@ public struct EngineConfiguration: Sendable {
         self.throttle = settings.throttle
         self.verifyUpstreamCertificates = settings.verifyUpstreamCertificates
         self.recording = recording
+        self.http2Enabled = settings.http2Enabled
     }
 
     /// Whether a CONNECT tunnel to host:port should be decrypted (MITM).
