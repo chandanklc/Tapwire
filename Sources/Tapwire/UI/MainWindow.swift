@@ -192,10 +192,27 @@ struct FilterBar: View {
     var body: some View {
         @Bindable var traffic = model.traffic
         HStack(spacing: 8) {
-            HStack {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search URL, headers and bodies", text: $traffic.filter.text)
+            HStack(spacing: 4) {
+                Menu {
+                    Picker("Search in", selection: $traffic.filter.scope) {
+                        ForEach(TrafficFilter.SearchScope.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                    Divider()
+                    Toggle("Regular expression", isOn: $traffic.filter.regex)
+                    Toggle("Match case", isOn: $traffic.filter.caseSensitive)
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.visible)
+                .fixedSize()
+                .help("Search in: \(traffic.filter.scope.title)")
+                TextField(searchPrompt(traffic.filter), text: $traffic.filter.text)
                     .textFieldStyle(.plain)
+                if traffic.isSearching { ProgressView().controlSize(.mini) }
+                if traffic.filter.regex { Tag(text: ".*", color: .secondary).help("Regular expression") }
+                if traffic.filter.caseSensitive { Tag(text: "Aa", color: .secondary).help("Match case") }
                 if !traffic.filter.text.isEmpty {
                     Button { traffic.filter.text = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
                         .foregroundStyle(.secondary)
@@ -203,6 +220,8 @@ struct FilterBar: View {
             }
             .padding(5)
             .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.red, lineWidth: traffic.filter.regexError ? 1 : 0))
+            .help(traffic.filter.regexError ? "This regular expression isn't valid" : "")
             Picker("Method", selection: $traffic.filter.method) {
                 Text("Any method").tag("ANY")
                 ForEach(HTTPMethods.all + ["CONNECT"], id: \.self) { Text($0).tag($0) }
@@ -228,6 +247,15 @@ struct FilterBar: View {
         .labelsHidden()
         .controlSize(.small)
         .padding(.horizontal, 8).padding(.vertical, 6)
+    }
+}
+
+private func searchPrompt(_ f: TrafficFilter) -> String {
+    switch f.scope {
+    case .everything: return "Search URL, headers, bodies and messages"
+    case .url: return "Search URLs"
+    case .headers: return "Search headers"
+    case .bodies: return "Search bodies and WebSocket messages"
     }
 }
 

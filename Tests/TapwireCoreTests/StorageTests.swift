@@ -51,6 +51,28 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual((req["cookies"] as! [[String: String]]).count, 2)
     }
 
+    func testHARWebSocketMessagesRoundTrip() throws {
+        var ws = CapturedExchange(sequence: 1, kind: .websocket, state: .completed,
+                                  request: CapturedRequest(method: "GET", url: "wss://chat.test/socket"),
+                                  response: CapturedResponse(status: 101))
+        ws.webSocketMessages = [
+            WebSocketMessage(direction: .sent, kind: .text, time: 12, payload: Data("{\"hi\":1}".utf8)),
+            WebSocketMessage(direction: .received, kind: .binary, time: 40, payload: Data([0, 1, 2, 255])),
+            WebSocketMessage(direction: .received, kind: .close, time: 90, payload: Data("bye".utf8), closeCode: 1000),
+        ]
+        let data = try HAR.export([ws])
+        let text = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(text.contains("_webSocketMessages"))
+        let back = try XCTUnwrap(HAR.import(data).first)
+        XCTAssertEqual(back.kind, .websocket)
+        let m = try XCTUnwrap(back.webSocketMessages)
+        XCTAssertEqual(m.map(\.direction), [.sent, .received, .received])
+        XCTAssertEqual(m.map(\.kind), [.text, .binary, .close])
+        XCTAssertEqual(m[0].text, "{\"hi\":1}")
+        XCTAssertEqual(m[1].payload, Data([0, 1, 2, 255]))
+        XCTAssertEqual(m[1].time, 40, accuracy: 1)
+    }
+
     func testSessionRoundTrip() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("s-\(UUID()).tapwire")
         let ex = sampleExchange()

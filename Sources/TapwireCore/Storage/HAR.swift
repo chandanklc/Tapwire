@@ -25,6 +25,55 @@ public enum HAR {
         public var timings: Timings
         public var serverIPAddress: String?
         public var comment: String?
+        /// Chrome DevTools extensions for WebSocket entries.
+        public var _resourceType: String?
+        public var _webSocketMessages: [WebSocketFrameEntry]?
+    }
+
+    /// A WebSocket message in Chrome's HAR format. `time` is seconds since 1970; binary data is base64.
+    public struct WebSocketFrameEntry: Codable {
+        public var type: String
+        public var time: Double
+        public var opcode: Int
+        public var data: String
+    }
+
+    static func opcode(_ kind: WebSocketMessage.Kind) -> Int {
+        switch kind {
+        case .text: return 1
+        case .binary: return 2
+        case .close: return 8
+        case .ping: return 9
+        case .pong: return 10
+        }
+    }
+
+    static func frames(_ ex: CapturedExchange) -> [WebSocketFrameEntry]? {
+        guard ex.kind == .websocket, let messages = ex.webSocketMessages else { return nil }
+        let start = ex.startedAt.timeIntervalSince1970
+        return messages.map { m in
+            let text = m.kind == .binary || m.compressed ? nil : String(data: m.payload, encoding: .utf8)
+            return WebSocketFrameEntry(type: m.direction == .sent ? "send" : "receive", time: start + m.time / 1000,
+                                       opcode: opcode(m.kind), data: text ?? m.payload.base64EncodedString())
+        }
+    }
+
+    static func messages(_ frames: [LenientFrame], start: Date) -> [WebSocketMessage] {
+        frames.compactMap { f in
+            let kind: WebSocketMessage.Kind
+            switch f.opcode ?? 1 {
+            case 1: kind = .text
+            case 2: kind = .binary
+            case 8: kind = .close
+            case 9: kind = .ping
+            case 10: kind = .pong
+            default: return nil
+            }
+            let text = f.data ?? ""
+            let payload = kind == .binary ? (Data(base64Encoded: text) ?? Data(text.utf8)) : Data(text.utf8)
+            let ms = f.time.map { max(0, ($0 - start.timeIntervalSince1970) * 1000) } ?? 0
+            return WebSocketMessage(direction: f.type == "send" ? .sent : .received, kind: kind, time: ms, payload: payload)
+        }
     }
 
     public struct Request: Codable {
@@ -136,7 +185,8 @@ public enum HAR {
         var comment: String?
         if !ex.matchedRules.isEmpty { comment = "Tapwire: " + ex.matchedRules.joined(separator: ", ") }
         return Entry(startedDateTime: iso.string(from: ex.startedAt), time: total, request: request, response: response,
-                     cache: [:], timings: Timings(send: send, wait: wait, receive: receive), serverIPAddress: nil, comment: comment)
+                     cache: [:], timings: Timings(send: send, wait: wait, receive: receive), serverIPAddress: nil, comment: comment,
+                     _resourceType: ex.kind == .websocket ? "websocket" : nil, _webSocketMessages: frames(ex))
     }
 
     static func cookies(fromRequest headers: [HeaderField]) -> [Cookie] {
@@ -196,6 +246,10 @@ public enum HAR {
             if let c = e.comment, c.hasPrefix("Tapwire: ") {
                 ex.matchedRules = c.dropFirst(9).components(separatedBy: ", ")
             }
+            if e._resourceType == "websocket" || e._webSocketMessages != nil {
+                ex.kind = .websocket
+                ex.webSocketMessages = messages(e._webSocketMessages ?? [], start: date)
+            }
             return ex
         }
     }
@@ -210,7 +264,10 @@ public enum HAR {
         var response: LenientResponse?
         var timings: LenientTimings?
         var comment: String?
+        var _resourceType: String?
+        var _webSocketMessages: [LenientFrame]?
     }
+    struct LenientFrame: Decodable { var type: String?; var time: Double?; var opcode: Int?; var data: String? }
     struct LenientRequest: Decodable {
         var method: String
         var url: String

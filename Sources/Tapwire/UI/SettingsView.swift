@@ -75,6 +75,8 @@ struct SSLSettings: View {
         @Bindable var model = model
         VStack(alignment: .leading, spacing: 8) {
             Toggle("Decrypt all HTTPS traffic", isOn: $model.settings.decryptAll).toggleStyle(.switch)
+            Toggle("Offer HTTP/2 to apps (servers are still contacted over HTTP/1.1)", isOn: $model.settings.http2Enabled)
+                .toggleStyle(.checkbox)
             Text("Otherwise only these hosts are decrypted; others are tunnelled untouched. Wildcards: *.myapp.com, optional :port.")
                 .font(.caption).foregroundStyle(.secondary)
             Table($model.settings.sslEntries, selection: $selection) {

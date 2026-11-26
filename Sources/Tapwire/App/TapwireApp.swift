@@ -106,6 +106,12 @@ struct TapwireCommands: Commands {
             Button("Export Session as HAR…") { FileActions.exportHAR(model.traffic.entries) }.keyboardShortcut("e", modifiers: [.command, .shift])
             Button("Export Visible Calls as HAR…") { FileActions.exportHAR(model.traffic.visible) }
         }
+        CommandGroup(after: .textEditing) {
+            Button("Find in Body…") { TextFind.perform(.showFindInterface) }.keyboardShortcut("f")
+            Button("Find Next") { TextFind.perform(.nextMatch) }.keyboardShortcut("g")
+            Button("Find Previous") { TextFind.perform(.previousMatch) }.keyboardShortcut("g", modifiers: [.command, .shift])
+            Button("Use Selection for Find") { TextFind.perform(.setSearchString) }
+        }
         CommandMenu("Proxy") {
             Button(model.isRunning ? "Stop Proxy" : "Start Proxy") { model.toggleRunning() }.keyboardShortcut("r")
             Button(model.recording ? "Pause Recording" : "Resume Recording") { model.recording.toggle() }.keyboardShortcut("p", modifiers: [.command, .shift])

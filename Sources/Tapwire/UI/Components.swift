@@ -100,6 +100,8 @@ struct CodeEditor: NSViewRepresentable {
         tv.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         tv.textContainerInset = NSSize(width: 4, height: 6)
         tv.isEditable = isEditable
+        tv.usesFindBar = true
+        tv.isIncrementalSearchingEnabled = true
         tv.delegate = context.coordinator
         tv.string = text
         context.coordinator.highlight(tv)
@@ -351,5 +353,14 @@ struct EmptyState: View {
         } description: {
             if !message.isEmpty { Text(message) }
         }
+    }
+}
+
+/// Sends a find-bar action (⌘F, ⌘G…) to the focused text view.
+enum TextFind {
+    static func perform(_ action: NSTextFinder.Action) {
+        let item = NSMenuItem()
+        item.tag = action.rawValue
+        NSApp.sendAction(#selector(NSResponder.performTextFinderAction(_:)), to: nil, from: item)
     }
 }

@@ -5,10 +5,17 @@ import TapwireCore
 struct InspectorView: View {
     let exchange: CapturedExchange
     @State private var side: Side = .response
-    @State private var tab: Tab = .overview
+    @State private var tab: Tab
+    @State private var messageSelection: WebSocketMessage.ID?
+
+    init(exchange: CapturedExchange) {
+        self.exchange = exchange
+        _tab = State(initialValue: exchange.kind == .websocket ? .messages : .overview)
+    }
 
     enum Side: String, CaseIterable, Identifiable { case request = "Request", response = "Response"; var id: String { rawValue } }
     enum Tab: String, CaseIterable, Identifiable {
+        case messages = "Messages"
         case overview = "Overview", headers = "Headers", query = "Query", cookies = "Cookies", body = "Body"
         var id: String { rawValue }
     }
@@ -18,11 +25,13 @@ struct InspectorView: View {
             header
             Divider()
             HStack {
-                Picker("", selection: $side) {
-                    ForEach(Side.allCases) { Text($0.rawValue).tag($0) }
+                if tab != .messages {
+                    Picker("", selection: $side) {
+                        ForEach(Side.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 200)
                 Spacer()
                 Picker("", selection: $tab) {
                     ForEach(availableTabs) { Text($0.rawValue).tag($0) }
@@ -40,7 +49,8 @@ struct InspectorView: View {
     }
 
     private var availableTabs: [Tab] {
-        side == .request ? Tab.allCases : [.overview, .headers, .cookies, .body]
+        let tabs: [Tab] = side == .request ? [.overview, .headers, .query, .cookies, .body] : [.overview, .headers, .cookies, .body]
+        return exchange.kind == .websocket ? [.messages] + tabs : tabs
     }
 
     private var header: some View {
@@ -73,6 +83,7 @@ struct InspectorView: View {
 
     @ViewBuilder private var content: some View {
         switch (side, tab) {
+        case (_, .messages): WebSocketMessagesView(exchange: exchange, selection: $messageSelection)
         case (_, .overview): OverviewView(exchange: exchange)
         case (.request, .headers): HeadersList(headers: exchange.request.headers)
         case (.response, .headers):
@@ -422,5 +433,116 @@ struct FormDataView: View {
         guard let r = line.range(of: "\(key)=\"") else { return nil }
         let rest = line[r.upperBound...]
         return rest.firstIndex(of: "\"").map { String(rest[..<$0]) }
+    }
+}
+
+// MARK: - WebSocket messages
+
+struct WebSocketMessagesView: View {
+    let exchange: CapturedExchange
+    @Binding var selection: WebSocketMessage.ID?
+    @State private var direction: DirectionFilter = .all
+    @State private var search = ""
+    @State private var hideControl = false
+
+    enum DirectionFilter: String, CaseIterable, Identifiable {
+        case all = "All", sent = "Sent", received = "Received"
+        var id: String { rawValue }
+    }
+
+    private var all: [WebSocketMessage] { exchange.webSocketMessages ?? [] }
+
+    private var shown: [WebSocketMessage] {
+        all.filter { m in
+            switch direction {
+            case .all: break
+            case .sent: if m.direction != .sent { return false }
+            case .received: if m.direction != .received { return false }
+            }
+            if hideControl && (m.kind == .ping || m.kind == .pong) { return false }
+            if !search.isEmpty { return m.text?.localizedCaseInsensitiveContains(search) ?? false }
+            return true
+        }
+    }
+
+    var body: some View {
+        if all.isEmpty {
+            EmptyState(title: "No messages", systemImage: "bubble.left.and.bubble.right",
+                       message: exchange.state == .open ? "Waiting for the first message…"
+                           : (exchange.response?.status == 101 ? "The connection closed without messages." : "The upgrade didn't complete."))
+        } else {
+            VSplitView {
+                VStack(spacing: 0) {
+                    toolbar
+                    Divider()
+                    list
+                }
+                .frame(minHeight: 140)
+                detail.frame(minHeight: 120)
+            }
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 8) {
+            Picker("", selection: $direction) {
+                ForEach(DirectionFilter.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .fixedSize()
+            Toggle("Hide ping/pong", isOn: $hideControl).toggleStyle(.checkbox)
+            TextField("Filter messages", text: $search).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
+            Spacer()
+            let sent = all.filter { $0.direction == .sent }.count
+            Text("\(sent) sent · \(all.count - sent) received" + (exchange.webSocketMessagesDropped.map { " · \($0) not kept" } ?? ""))
+                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+        }
+        .labelsHidden()
+        .controlSize(.small)
+        .padding(6)
+    }
+
+    private var list: some View {
+        Table(shown, selection: $selection) {
+            TableColumn("") { m in
+                Image(systemName: m.direction == .sent ? "arrow.up" : "arrow.down")
+                    .foregroundStyle(m.direction == .sent ? Color.green : Color.blue)
+                    .help(m.direction == .sent ? "Sent by the client" : "Received from the server")
+            }
+            .width(18)
+            TableColumn("Time") { m in Text(Fmt.ms(m.time)).monospacedDigit().foregroundStyle(.secondary) }
+                .width(min: 50, ideal: 70)
+            TableColumn("Type") { m in Text(m.kind.rawValue.capitalized).foregroundStyle(m.kind == .text || m.kind == .binary ? .primary : .secondary) }
+                .width(min: 40, ideal: 55)
+            TableColumn("Size") { m in Text(Fmt.bytes(m.size)).monospacedDigit().foregroundStyle(.secondary) }
+                .width(min: 40, ideal: 60)
+            TableColumn("Data") { m in
+                Text(m.preview).font(.system(.body, design: .monospaced)).lineLimit(1)
+                    .foregroundStyle(m.kind == .close ? .orange : .primary)
+            }
+        }
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
+    }
+
+    @ViewBuilder private var detail: some View {
+        if let id = selection, let m = all.first(where: { $0.id == id }) {
+            if m.compressed {
+                EmptyState(title: "Compressed message", systemImage: "archivebox",
+                           message: "This message uses per-message compression, which Tapwire can't decode.")
+            } else {
+                BodyViewer(data: m.payload, headers: [HeaderField("Content-Type", Self.contentType(m))], totalSize: m.size,
+                           truncated: m.truncated)
+            }
+        } else {
+            EmptyState(title: "Select a message", systemImage: "text.bubble", message: "")
+        }
+    }
+
+    static func contentType(_ m: WebSocketMessage) -> String {
+        guard m.kind != .binary else { return "application/octet-stream" }
+        if let first = m.payload.first(where: { !($0 == 0x20 || $0 == 0x0A || $0 == 0x0D || $0 == 0x09) }), first == 0x7B || first == 0x5B {
+            return "application/json"
+        }
+        return "text/plain; charset=utf-8"
     }
 }
