@@ -36,10 +36,11 @@ Decisions made while building Tapwire, with reasons.
 12. **Abort = close.** "Abort" closes the client connection without a response, which clients
     report as a network error. A TCP RST (SO_LINGER 0) isn't available through NIO's socket-option
     API (it only takes Int32 values), so a plain close is the closest working alternative.
-13. **WebSockets are tunnelled after the handshake.** The 101 handshake is recorded (and environment
-    mapping applies); the frames are passed through as raw bytes and are not decoded.
-14. **HTTP/2 and HTTP/3 aren't used.** ALPN offers only `http/1.1` to clients and servers. QUIC/HTTP/3
-    (UDP) never reaches an HTTP proxy, so apps that use it (e.g. Cronet) must fall back to TCP.
+13. **WebSocket frames are passed through unchanged and parsed on the side.** After the 101 the
+    connection is a byte tunnel; a parser reads a copy of each direction and records messages
+    (superseded the earlier "not decoded" behaviour, see 20).
+14. **HTTP/3 isn't used.** QUIC/HTTP/3 (UDP) never reaches an HTTP proxy, so apps that use it (e.g.
+    Cronet) must fall back to TCP. HTTP/2 is offered to clients only (see 21).
 15. **System proxy.** `networksetup` runs once through `osascript … with administrator privileges`
     for all enabled network services. The previous settings are saved to `system-proxy-backup.json`
     before changing anything, and restored on Stop, on Quit, or later from the toggle.
@@ -52,3 +53,27 @@ Decisions made while building Tapwire, with reasons.
     tests don't link SwiftNIO a second time.
 19. **Default port conflict.** Port 9090 is also Proxyman's default. If something else listens there,
     Tapwire shows an error at launch; change the port in Settings → General.
+20. **WebSocket messages without compression.** Tapwire removes `Sec-WebSocket-Extensions` from the
+    client's handshake, so `permessage-deflate` is never negotiated. With context takeover the
+    deflate state carries across messages, so a proxy that joins mid-stream or drops a frame can't
+    decode them; uncompressed frames are always readable. Each connection keeps at most 10,000
+    messages and 256 KB per message; the rest are counted. Messages are recorded at most every 150 ms
+    to keep UI updates cheap. The switch from HTTP to tunnel now happens in one event-loop step, after
+    a client frame sent immediately after the 101 was found to reach the HTTP handlers.
+21. **HTTP/2 to clients, HTTP/1.1 to servers.** Decrypted connections offer `h2` and `http/1.1` via
+    ALPN. Each HTTP/2 stream is converted to HTTP/1 messages (`HTTP2FramePayloadToHTTP1ServerCodec`) and
+    handled by the same pipeline as HTTP/1.1, so rules, breakpoints and mocks need no changes. Upstream
+    stays HTTP/1.1 because it works everywhere and keeps the connection pool simple; cookies that HTTP/2
+    splits across headers are joined back into one. A setting turns HTTP/2 off.
+22. **Search runs off the main thread when it reads bodies.** URL and header filters run directly; body
+    searches wait 250 ms after typing stops and run in the background. As traffic arrives, only the
+    calls that changed are re-checked. Regex uses `NSRegularExpression`, compiled once per pass.
+23. **HAR WebSocket format.** Messages are exported as Chrome DevTools' `_resourceType: "websocket"` and
+    `_webSocketMessages` (`type`, `time` in seconds, `opcode`, `data`, binary as base64), so Chrome and other
+    HAR tools can read them. Close codes aren't part of that format and are lost on a HAR round trip
+    (sessions keep them).
+24. **Release script instead of an Xcode archive workflow.** `scripts/release.sh` builds a universal
+    Release app, verifies the signature, makes a compressed DMG with an Applications link, and, when given
+    a Developer ID identity and a notarytool profile, signs, notarizes and staples it. Without them it
+    produces an ad-hoc signed DMG. Signing details come from environment variables, so no personal
+    team ID is stored in the project.

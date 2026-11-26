@@ -3,8 +3,9 @@
 Tapwire is a macOS HTTP/HTTPS debugging proxy for developers. Use it to watch, pause, edit, mock and
 redirect your Android app's API traffic (phone on Wi-Fi or the emulator) and the Mac's own traffic.
 
-- Live traffic list with domain sidebar, filters and full-text search
-- HTTPS decryption (MITM) per host or for everything, with a per-Mac root certificate
+- Live traffic list with domain sidebar, filters and search (URL, headers, bodies, WebSocket messages; regex)
+- HTTPS decryption (MITM) per host or for everything, with a per-Mac root certificate; HTTP/2 to apps
+- **WebSocket messages**: every frame in both directions, with a Messages tab
 - **Breakpoints**: pause a request or response, edit anything, then Execute / Abort / Cancel
 - **Mocks**: full mocks (no server) or modify rules (status, headers, body, JSON key paths), in groups
 - **Environments**: redirect hosts (prod → staging → local) with extra headers, switch in one click
@@ -51,6 +52,31 @@ port in **Settings → General**. Data lives in `~/Library/Application Support/T
 rules, environments, the CA certificate). The CA private key is in your login Keychain
 (item `app.tapwire.root-ca`). Debug builds are signed to run locally, so after a rebuild macOS may
 ask once for Keychain access; choose **Always Allow**.
+
+## Make a release (DMG)
+
+```bash
+scripts/release.sh
+```
+
+This builds a universal (Apple silicon + Intel) Release app and writes `build/dist/Tapwire-<version>.dmg`
+plus a `.sha256` file. Without a certificate the app is signed ad hoc: it runs on your Mac, and other
+Macs block it the first time until you click **Open Anyway** in System Settings → Privacy & Security.
+
+To make a DMG anyone can open, you need an Apple Developer account and a **Developer ID Application**
+certificate in your Keychain. Store notarization credentials once:
+
+```bash
+xcrun notarytool store-credentials tapwire-notary --apple-id you@example.com --team-id TEAMID
+```
+
+Then build, sign, notarize and staple:
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" TEAM_ID=TEAMID NOTARY_PROFILE=tapwire-notary scripts/release.sh
+```
+
+The version comes from `MARKETING_VERSION` in `project.yml`.
 
 ## Trust the certificate on the Mac
 
@@ -159,6 +185,29 @@ server (skipped by a full mock) → response modifications → response breakpoi
 - **Repeat** re-sends a call; **Edit & Repeat** (or double-click) opens **Compose**, which also builds
   requests from scratch or from pasted raw HTTP. Composed requests go through the same rules.
 
+## Searching
+
+The search field matches **Everything** by default: URLs, headers, rule names, request and response
+bodies (decoded from gzip/deflate/br) and WebSocket messages. Click the magnifying glass to limit it to
+URL, Headers or Bodies & messages, or to turn on **Regular expression** and **Match case**. Body searches
+run in the background, so typing stays fast with thousands of calls. Inside a body, ⌘F opens a find bar
+(⌘G / ⌘⇧G for next and previous).
+
+## WebSockets
+
+WebSocket calls (tagged **WS**) open on the **Messages** tab: each message with direction, time, type,
+size and a preview. Select one to see it in the body viewer (JSON is pretty-printed). You can filter
+by direction, hide ping/pong, and filter by text. Tapwire keeps up to 10,000 messages per connection
+and 256 KB per message. To keep messages readable, Tapwire removes the `permessage-deflate` offer from
+the handshake, so the connection runs uncompressed. Messages are included in saved sessions and in
+HAR exports (Chrome's `_webSocketMessages` format).
+
+## HTTP/2
+
+In decrypted HTTPS connections Tapwire offers HTTP/2 to the app, so apps and browsers that prefer
+HTTP/2 use it. Calls show as `HTTP/2`. Tapwire still talks HTTP/1.1 to the server, and rules,
+breakpoints and mocks work the same. Turn it off in **Settings → SSL Proxying**.
+
 ## Other features
 
 - **Throttling** (Settings → Throttling): 4G, 3G, Slow 3G, EDGE, high latency or custom latency and
@@ -175,8 +224,10 @@ server (skipped by a full mock) → response modifications → response breakpoi
 - **Release builds** on Android 7+ ignore user-installed CAs unless the app opts in.
 - **HTTP/3 / QUIC** uses UDP and bypasses HTTP proxies. Apps fall back to TCP when QUIC is blocked.
   Chrome and Cronet do this automatically.
-- **HTTP/2** isn't offered; clients use HTTP/1.1 through Tapwire (they negotiate it automatically via ALPN).
-- **WebSocket** frames are tunnelled, not decoded.
+- **HTTP/2 to servers** isn't used: Tapwire speaks HTTP/2 with the app but HTTP/1.1 with the server.
+  Plain-HTTP `h2c` isn't supported. Server push and HTTP/2-only features (e.g. gRPC) don't work through Tapwire.
+- **WebSocket** messages can be viewed but not paused or edited. WebSockets over HTTP/2 (RFC 8441)
+  aren't offered, so clients open a separate HTTP/1.1 connection for them.
 - Bodies larger than the memory limit (default 50 MB) are forwarded in full but can't be edited.
   Only the first preview MB (default 5) are shown.
 - Some apps ignore the Android Wi-Fi proxy (e.g. ones that set their own proxy or use raw sockets).

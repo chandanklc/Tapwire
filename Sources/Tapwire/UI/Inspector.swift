@@ -117,6 +117,13 @@ struct InspectorView: View {
 }
 
 struct OverviewView: View {
+    /// The app's protocol, plus the server's when it differs (HTTP/2 to the app, HTTP/1.1 upstream).
+    static func protocolText(_ e: CapturedExchange) -> String {
+        let client = e.request.httpVersion
+        guard let server = e.response?.httpVersion, server != client else { return client }
+        return e.isMocked ? client : "\(client) (server: \(server))"
+    }
+
     let exchange: CapturedExchange
 
     var body: some View {
@@ -126,7 +133,7 @@ struct OverviewView: View {
                 if let o = exchange.originalURL { row("Original URL", o); row("Mapped by", exchange.environmentName ?? "") }
                 row("Method", exchange.request.method)
                 row("Status", exchange.response.map { "\($0.status) \($0.reason)" } ?? exchange.statusText)
-                row("Protocol", exchange.response?.httpVersion ?? exchange.request.httpVersion)
+                row("Protocol", Self.protocolText(exchange))
                 row("Kind", exchange.kind == .http ? (exchange.isTLSDecrypted ? "HTTPS (decrypted)" : (exchange.url?.isSecure == true ? "HTTPS" : "HTTP"))
                     : exchange.kind.rawValue.capitalized)
                 row("Client", exchange.clientAddress ?? "–")

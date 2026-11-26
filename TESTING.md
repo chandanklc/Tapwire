@@ -21,6 +21,13 @@ or change Tapwire's port in Settings → General.
 - [ ] Overview shows timing (bar + numbers) and sizes.
 - [ ] Sidebar: domains with counts; pin one (right-click) → appears under Pinned; selecting filters the list.
 - [ ] Filter bar: search finds text in a response body; method / status / type filters; "Decrypted only".
+- [ ] Magnifying-glass menu: URL / Headers / Bodies & messages scopes each only match their part.
+- [ ] Regular expression on: `user/\d+` matches; an invalid pattern like `(` gives a red outline. Match case works.
+- [ ] With a few thousand calls, typing in the search field stays smooth (a small spinner shows while bodies are searched).
+- [ ] Click into a response body, press ⌘F → find bar; ⌘G / ⌘⇧G move between matches.
+- [ ] `curl --http2 -x http://127.0.0.1:9090 https://example.com/ -o /dev/null -w '%{http_version}\n'` (example.com
+      in SSL Proxying) prints `2`; the row's Overview shows Protocol HTTP/2. Turning off "Offer HTTP/2" prints `1.1`.
+- [ ] Chrome or Safari through the proxy with a decrypted site: pages load, and breakpoints and mocks still work.
 - [ ] Pause recording → new calls don't appear but still work. Clear (⌘K) empties the list.
 - [ ] Context menu: Copy URL, Copy as cURL (paste in Terminal and run it), Copy bodies, Repeat (new row),
       Edit & Repeat (Compose opens prefilled), Save to File (all 3 formats), Delete.
@@ -78,4 +85,9 @@ or change Tapwire's port in Settings → General.
 - [ ] Settings → port change restarts the listener on the new port.
 - [ ] Theme Light / Dark / System switches all windows.
 - [ ] WebSocket (e.g. a websocket echo test page) → a row tagged WS with status 101, open, then closed with byte counts.
+- [ ] The WS row opens on Messages: sent (green ↑) and received (blue ↓) messages appear live; selecting one
+      shows it in the body viewer; Sent/Received filter, Hide ping/pong and the text filter work.
+- [ ] Search for text that only appears in a WebSocket message → the WS row is found.
+- [ ] Export as HAR → re-import → the WS row still has its messages.
+- [ ] `scripts/release.sh` → `build/dist/Tapwire-<version>.dmg`; mount it and drag Tapwire to Applications; it launches.
 - [ ] Certificates → Regenerate CA (confirm) → the new CA must be trusted again; old devices fail until updated.
