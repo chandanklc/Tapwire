@@ -172,6 +172,7 @@ struct SourcesColumn: View {
                 .labelsHidden()
                 .controlSize(.small)
                 .fixedSize()
+                .help("Group traffic by device, or list every host")
             }
             .padding(.leading, 16).padding(.trailing, 12)
             .frame(height: 56)
@@ -282,11 +283,13 @@ struct SourcesColumn: View {
             .overlay(alignment: .bottomTrailing) {
                 if decrypted && listed { Circle().fill(GT.okDot).frame(width: 6, height: 6).offset(x: 2, y: 2) }
             }
+            .help(!listed ? "Hidden by the domain filter" : (decrypted ? "HTTPS to this host is decrypted" : "Not decrypted: HTTPS is tunnelled untouched"))
             Text(domain).lineLimit(1).truncationMode(.middle).foregroundStyle(listed ? GT.text : GT.text2)
-            if pinned { Image(systemName: "pin.fill").font(.system(size: 9)).foregroundStyle(GT.gold) }
+            if pinned { Image(systemName: "pin.fill").font(.system(size: 9)).foregroundStyle(GT.gold).help("Pinned") }
             Spacer(minLength: 4)
             Sparkline(values: model.traffic.hostActivity[domain] ?? Array(repeating: 0, count: 7))
             Text("\(count)").font(GT.mono(11, .medium)).foregroundStyle(GT.text2).frame(minWidth: 18, alignment: .trailing)
+                .help("\(count) calls")
         }
         .tag(domain)
         .help(decrypted ? "\(domain) — decrypted" : domain)
@@ -481,6 +484,17 @@ struct TokenChip: View {
     let token: SearchToken
     @Environment(AppModel.self) private var model
 
+    static func describe(_ t: SearchToken) -> String {
+        let what: String
+        switch t.key {
+        case .host: what = "host contains \(t.value)"
+        case .status: what = "status is \(t.value)"
+        case .method: what = "method is \(t.value.uppercased())"
+        case .device: what = "device is \(t.value == "mac" ? "this Mac or an emulator" : t.value)"
+        }
+        return (t.negated ? "Hiding calls where " : "Showing calls where ") + what
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             Text(token.key.rawValue + ":").foregroundStyle(GT.racingGreen)
@@ -489,12 +503,14 @@ struct TokenChip: View {
                 Image(systemName: "xmark").font(.system(size: 8.5, weight: .bold)).foregroundStyle(GT.text2)
             }
             .buttonStyle(.plain)
+            .help("Remove this filter")
             .accessibilityLabel("Remove \(token.text)")
         }
         .font(GT.mono(11.5))
         .padding(.leading, 8).padding(.trailing, 6).padding(.vertical, 3)
         .background(GT.racingGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
         .fixedSize()
+        .help(Self.describe(token))
     }
 }
 
@@ -583,6 +599,7 @@ struct StatusBar: View {
                 }
                 .padding(.horizontal, 8).frame(height: 20)
                 .background(GT.field, in: Capsule())
+                .help("\(d.total) calls from \(d.label), last one \(TrafficTable.clock.string(from: d.lastSeen))")
             }
             if let env = model.activeEnvironment {
                 HStack(spacing: 5) { Circle().fill(Color(hex: env.colorHex)).frame(width: 7, height: 7); Text(env.name) }
@@ -692,8 +709,8 @@ struct RequestCell: View {
         HStack(spacing: 6) {
             if let c = e.environmentColorHex { Circle().fill(Color(hex: c)).frame(width: 7, height: 7).help(e.environmentName ?? "") }
             if e.isTLSDecrypted { Image(systemName: "lock.open.fill").font(.system(size: 9)).foregroundStyle(GT.okDot).help("Decrypted HTTPS") }
-            if e.kind == .websocket { Pill(text: "WS", kind: .tunnel) }
-            if e.isMocked { Pill(text: "Mock", kind: .mocked, mono: false) }
+            if e.kind == .websocket { Pill(text: "WS", kind: .tunnel).help("WebSocket connection") }
+            if e.isMocked { Pill(text: "Mock", kind: .mocked, mono: false).help("Answered by a mock rule") }
             ForEach(e.matchedRules.filter { !$0.hasPrefix("Env:") && !$0.hasPrefix("Mock:") }.prefix(1), id: \.self) { r in
                 Pill(text: r, kind: r.hasPrefix("Breakpoint") ? .paused : .mocked, mono: false)
             }
@@ -723,6 +740,7 @@ struct TimelineCell: View {
                 .offset(x: x, y: (geo.size.height - 7) / 2)
         }
         .frame(height: 18)
+        .help("Started \(TrafficTable.clock.string(from: e.startedAt)) · " + (e.state == .open ? "still open" : "took \(Fmt.ms(e.timing.completed))"))
         .accessibilityHidden(true)
     }
 

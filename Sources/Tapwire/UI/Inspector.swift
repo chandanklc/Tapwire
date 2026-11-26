@@ -169,6 +169,7 @@ struct InspectorView: View {
                 }
                 .frame(height: 8)
                 .clipShape(Capsule())
+                .help("Grey: connect · blue: sending the request · gold: waiting for the server · green: downloading the response")
                 (Text(connect > 0 ? "Connect \(Fmt.ms(connect)) · " : "") +
                  Text("Sent \(Fmt.ms(sent - connect)) · ") +
                  Text("Waiting \(Fmt.ms(first - sent))").fontWeight(.semibold).foregroundColor(GT.text) +

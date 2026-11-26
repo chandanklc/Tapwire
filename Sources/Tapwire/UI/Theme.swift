@@ -104,6 +104,7 @@ struct Crest: View {
             Text("TW").font(GT.engraved(size * 0.36)).foregroundStyle(GT.goldBright)
         }
         .frame(width: size, height: size)
+        .help("Tapwire")
         .accessibilityLabel("Tapwire")
     }
 }
@@ -139,6 +140,7 @@ struct MethodBadge: View {
             .lineLimit(1)
             .frame(width: width, height: 18)
             .background(method == "CONNECT" ? GT.field : c.opacity(0.13), in: RoundedRectangle(cornerRadius: 5))
+            .help(method == "CONNECT" ? "CONNECT: a tunnel opened through the proxy" : "\(method.uppercased()) request")
     }
 }
 
@@ -306,6 +308,7 @@ struct Sparkline: View {
             }
         }
         .frame(height: 14, alignment: .bottom)
+        .help("Activity over this session: \(values.reduce(0, +)) calls")
         .accessibilityHidden(true)
     }
 }
