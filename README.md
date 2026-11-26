@@ -11,6 +11,18 @@ redirect your Android app's API traffic (phone on Wi-Fi or the emulator) and the
 - **Environments**: redirect hosts (prod → staging → local) with extra headers, switch in one click
 - Repeat, Compose, cURL, sessions (`.tapwire`), HAR 1.2 import/export, throttling, menu bar extra
 
+## Download
+
+Get the latest `Tapwire-<version>.dmg` from [Releases](https://github.com/chandanklc/Tapwire/releases), open it
+and drag Tapwire to Applications. It runs on macOS 14 or later, on Apple silicon and Intel.
+
+The app isn't notarized yet, so macOS blocks it the first time you open it. Click **Done**, then go to
+**System Settings → Privacy & Security** and click **Open Anyway**. Or run this once:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Tapwire.app
+```
+
 ## Build and run
 
 Requirements: macOS 14+, Xcode 15+ (tested with Xcode 26), Homebrew.
@@ -231,3 +243,7 @@ breakpoints and mocks work the same. Turn it off in **Settings → SSL Proxying*
 - Bodies larger than the memory limit (default 50 MB) are forwarded in full but can't be edited.
   Only the first preview MB (default 5) are shown.
 - Some apps ignore the Android Wi-Fi proxy (e.g. ones that set their own proxy or use raw sockets).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
