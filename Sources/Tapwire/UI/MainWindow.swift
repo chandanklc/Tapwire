@@ -3,32 +3,43 @@ import SwiftUI
 import TapwireCore
 import UniformTypeIdentifiers
 
+enum InspectorPosition: String {
+    case bottom, right
+    static let storageKey = "layout.inspectorPosition"
+}
+
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(InspectorPosition.storageKey) private var inspectorPosition = InspectorPosition.bottom.rawValue
+
+    private var trafficList: some View {
+        VStack(spacing: 0) {
+            FilterBar()
+            Divider()
+            TrafficTable()
+            StatusBar()
+        }
+    }
 
     var body: some View {
         @Bindable var model = model
         NavigationSplitView {
             DomainSidebar()
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 360)
-        } content: {
-            VStack(spacing: 0) {
-                FilterBar()
-                Divider()
-                TrafficTable()
-                StatusBar()
-            }
-            .navigationSplitViewColumnWidth(min: 480, ideal: 720)
         } detail: {
-            if model.selection.count == 1, let id = model.selection.first, let e = model.traffic.entry(id) {
-                InspectorView(exchange: e).id(e.id)
-            } else if model.selection.count > 1 {
-                EmptyState(title: "\(model.selection.count) calls selected", systemImage: "square.stack.3d.up",
-                           message: "Right-click to export them as HAR, or delete them.")
+            // Details under the list (default, so the list gets the full width for URLs, codes and
+            // durations) or beside it. The divider can be dragged in both layouts.
+            if inspectorPosition == InspectorPosition.bottom.rawValue {
+                VSplitView {
+                    trafficList.frame(minHeight: 140, idealHeight: 320)
+                    InspectorPane().frame(minHeight: 200, idealHeight: 420)
+                }
             } else {
-                EmptyState(title: "No call selected", systemImage: "network",
-                           message: "Point your phone or emulator at this Mac's proxy, or turn on the system proxy.")
+                HSplitView {
+                    trafficList.frame(minWidth: 480, idealWidth: 720)
+                    InspectorPane().frame(minWidth: 360, idealWidth: 520)
+                }
             }
         }
         .toolbar { MainToolbar() }
@@ -48,6 +59,23 @@ struct MainWindow: View {
             return "Listening on \(ip):\(port)" + (model.recording ? "" : " · recording paused")
         }
         return "Stopped"
+    }
+}
+
+/// The selected call's details, or a placeholder.
+struct InspectorPane: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if model.selection.count == 1, let id = model.selection.first, let e = model.traffic.entry(id) {
+            InspectorView(exchange: e).id(e.id)
+        } else if model.selection.count > 1 {
+            EmptyState(title: "\(model.selection.count) calls selected", systemImage: "square.stack.3d.up",
+                       message: "Right-click to export them as HAR, or delete them.")
+        } else {
+            EmptyState(title: "No call selected", systemImage: "network",
+                       message: "Point your phone or emulator at this Mac's proxy, or turn on the system proxy.")
+        }
     }
 }
 
@@ -73,6 +101,7 @@ struct MainToolbar: ToolbarContent {
                 .help("Clear session (⌘K)")
         }
         ToolbarItemGroup(placement: .primaryAction) {
+            InspectorPositionButton()
             EnvironmentPicker()
             Toggle(isOn: $model.settings.breakpointsEnabled) {
                 Label("Breakpoints", systemImage: model.settings.breakpointsEnabled ? "pause.octagon.fill" : "pause.octagon")
@@ -100,6 +129,21 @@ struct MainToolbar: ToolbarContent {
             }
             .help("Certificate and Android setup")
         }
+    }
+}
+
+struct InspectorPositionButton: View {
+    @AppStorage(InspectorPosition.storageKey) private var position = InspectorPosition.bottom.rawValue
+
+    var body: some View {
+        let bottom = position == InspectorPosition.bottom.rawValue
+        Button {
+            position = bottom ? InspectorPosition.right.rawValue : InspectorPosition.bottom.rawValue
+        } label: {
+            Label(bottom ? "Details on the right" : "Details at the bottom",
+                  systemImage: bottom ? "rectangle.split.2x1" : "rectangle.split.1x2")
+        }
+        .help(bottom ? "Show call details on the right (⌥⌘I)" : "Show call details under the list (⌥⌘I)")
     }
 }
 

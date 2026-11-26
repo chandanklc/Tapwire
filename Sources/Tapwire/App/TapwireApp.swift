@@ -96,6 +96,7 @@ struct TapwireApp: App {
 struct TapwireCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(InspectorPosition.storageKey) private var inspectorPosition = InspectorPosition.bottom.rawValue
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -113,6 +114,17 @@ struct TapwireCommands: Commands {
             Button("Save Session…") { FileActions.saveSession(model.traffic.entries) }.keyboardShortcut("s")
             Button("Export Session as HAR…") { FileActions.exportHAR(model.traffic.entries) }.keyboardShortcut("e", modifiers: [.command, .shift])
             Button("Export Visible Calls as HAR…") { FileActions.exportHAR(model.traffic.visible) }
+        }
+        CommandGroup(after: .sidebar) {
+            Picker("Call Details", selection: $inspectorPosition) {
+                Text("At the Bottom").tag(InspectorPosition.bottom.rawValue)
+                Text("On the Right").tag(InspectorPosition.right.rawValue)
+            }
+            Button("Switch Details Position") {
+                inspectorPosition = inspectorPosition == InspectorPosition.bottom.rawValue
+                    ? InspectorPosition.right.rawValue : InspectorPosition.bottom.rawValue
+            }
+            .keyboardShortcut("i", modifiers: [.command, .option])
         }
         CommandGroup(after: .textEditing) {
             Button("Find in Body…") { TextFind.perform(.showFindInterface) }.keyboardShortcut("f")

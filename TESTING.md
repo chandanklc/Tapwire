@@ -19,6 +19,8 @@ or change Tapwire's port in Settings → General.
 - [ ] A JSON API call: Body → Pretty (coloured), Tree (expand/collapse), Raw, Hex. Copy body works.
 - [ ] An image call shows Image preview; a form POST shows Form; Query and Cookies tabs fill in.
 - [ ] Overview shows timing (bar + numbers) and sizes.
+- [ ] Call details show under the list by default, so the list uses the full width (Path, Code, Duration visible).
+      The toolbar button, View → Call Details, or ⌥⌘I moves them to the right and back; the choice survives a relaunch.
 - [ ] Pick Response → Body, then select another call → it opens on Response → Body too. Switch to Request →
       Headers, select another call → Request → Headers. Switching sides brings back each side's last tab.
       Body view mode (Pretty / Raw / Hex) is also kept. All of this survives quitting and reopening.

@@ -197,6 +197,12 @@ server (skipped by a full mock) → response modifications → response breakpoi
 - **Repeat** re-sends a call; **Edit & Repeat** (or double-click) opens **Compose**, which also builds
   requests from scratch or from pasted raw HTTP. Composed requests go through the same rules.
 
+## Layout
+
+Call details show **under the list** by default, so the list has the full window width for URLs, status
+codes and durations. To put them **on the right** instead, use the toolbar button, **View → Call Details**
+or ⌥⌘I. Drag the divider to resize. Tapwire remembers your choice.
+
 ## Searching
 
 The search field matches **Everything** by default: URLs, headers, rule names, request and response
