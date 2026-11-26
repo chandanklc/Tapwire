@@ -55,20 +55,23 @@ struct InspectorView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            HStack {
-                if tab != .messages {
-                    Picker("", selection: sideBinding) {
-                        ForEach(Side.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 200)
+            // Side and tabs on one row when they fit, on two rows in a narrow inspector,
+            // and tabs as a menu when even one row of tabs doesn't fit.
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    if tab != .messages { sidePicker }
+                    Spacer(minLength: 8)
+                    tabPicker
                 }
-                Spacer()
-                Picker("", selection: tabBinding) {
-                    ForEach(availableTabs) { Text($0.rawValue).tag($0) }
+                VStack(alignment: .leading, spacing: 6) {
+                    if tab != .messages { sidePicker }
+                    tabPicker
                 }
-                .pickerStyle(.segmented)
-                .fixedSize()
+                HStack {
+                    if tab != .messages { sidePicker }
+                    tabMenu
+                    Spacer(minLength: 0)
+                }
             }
             .labelsHidden()
             .padding(8)
@@ -76,6 +79,30 @@ struct InspectorView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private var sidePicker: some View {
+        Picker("", selection: sideBinding) {
+            ForEach(Side.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+    }
+
+    private var tabPicker: some View {
+        Picker("", selection: tabBinding) {
+            ForEach(availableTabs) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+    }
+
+    private var tabMenu: some View {
+        Picker("", selection: tabBinding) {
+            ForEach(availableTabs) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .fixedSize()
     }
 
     private var availableTabs: [Tab] {

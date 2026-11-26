@@ -141,6 +141,13 @@ struct EnvironmentPicker: View {
 struct DomainSidebar: View {
     @Environment(AppModel.self) private var model
     @State private var showHidden = false
+    @State private var search = ""
+
+    /// Domain names matching the sidebar search (all of them when it's empty).
+    private func searched(_ name: String) -> Bool {
+        let q = search.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty || name.localizedCaseInsensitiveContains(q)
+    }
 
     var body: some View {
         let selection = Binding<String?>(
@@ -148,14 +155,14 @@ struct DomainSidebar: View {
             set: { model.traffic.filter.domain = ($0 == "__all" ? nil : $0) })
         let lists = model.settings.domainFilter
         let pinned = model.settings.pinnedDomains
-        let listed = model.traffic.domains.filter { lists.allows(host: $0.name) }
-        let filteredOut = model.traffic.domains.filter { !lists.allows(host: $0.name) }
+        let listed = model.traffic.domains.filter { lists.allows(host: $0.name) && searched($0.name) }
+        let filteredOut = model.traffic.domains.filter { !lists.allows(host: $0.name) && searched($0.name) }
         List(selection: selection) {
             Label("All traffic", systemImage: "globe").badge(lists.isActive ? listed.reduce(0) { $0 + $1.count } : model.traffic.entries.count)
                 .tag("__all")
             if !pinned.isEmpty {
                 Section("Pinned") {
-                    ForEach(pinned.filter { lists.allows(host: $0) }, id: \.self) { d in
+                    ForEach(pinned.filter { lists.allows(host: $0) && searched($0) }, id: \.self) { d in
                         row(d, count: model.traffic.domains.first { $0.name == d }?.count ?? 0, pinned: true, listed: true)
                     }
                 }
@@ -164,9 +171,12 @@ struct DomainSidebar: View {
                 ForEach(listed.filter { !pinned.contains($0.name) }, id: \.name) { d in
                     row(d.name, count: d.count, pinned: false, listed: true)
                 }
+                if !search.isEmpty && listed.isEmpty && filteredOut.isEmpty {
+                    Text("No domains match “\(search)”").font(.callout).foregroundStyle(.secondary)
+                }
             }
             if !filteredOut.isEmpty {
-                Section(isExpanded: $showHidden) {
+                Section(isExpanded: search.isEmpty ? $showHidden : .constant(true)) {
                     ForEach(filteredOut, id: \.name) { d in
                         row(d.name, count: d.count, pinned: pinned.contains(d.name), listed: false)
                     }
@@ -176,8 +186,23 @@ struct DomainSidebar: View {
             }
         }
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
-            if lists.isActive { DomainFilterSummary() }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                if lists.isActive { DomainFilterSummary() }
+                Divider()
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Filter domains", text: $search).textFieldStyle(.plain)
+                    if !search.isEmpty {
+                        Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.plain).foregroundStyle(.secondary).help("Clear")
+                    }
+                }
+                .padding(.horizontal, 7).padding(.vertical, 5)
+                .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                .padding(8)
+                .background(.bar)
+            }
         }
     }
 
@@ -303,66 +328,126 @@ struct FilterBar: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        @Bindable var traffic = model.traffic
-        HStack(spacing: 8) {
-            HStack(spacing: 4) {
-                Menu {
-                    Picker("Search in", selection: $traffic.filter.scope) {
-                        ForEach(TrafficFilter.SearchScope.allCases) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.inline)
-                    Divider()
-                    Toggle("Regular expression", isOn: $traffic.filter.regex)
-                    Toggle("Match case", isOn: $traffic.filter.caseSensitive)
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.visible)
-                .fixedSize()
-                .help("Search in: \(traffic.filter.scope.title)")
-                TextField(searchPrompt(traffic.filter), text: $traffic.filter.text)
-                    .textFieldStyle(.plain)
-                if traffic.isSearching { ProgressView().controlSize(.mini) }
-                if traffic.filter.regex { Tag(text: ".*", color: .secondary).help("Regular expression") }
-                if traffic.filter.caseSensitive { Tag(text: "Aa", color: .secondary).help("Match case") }
-                if !traffic.filter.text.isEmpty {
-                    Button { traffic.filter.text = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                }
+        // Full bar when there's room; otherwise the filters fold into one menu so nothing is cut off.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                searchField.frame(minWidth: 200)
+                pickers
+                decryptedToggle
+                DomainFilterMenu()
+                resetButton
             }
-            .padding(5)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.red, lineWidth: traffic.filter.regexError ? 1 : 0))
-            .help(traffic.filter.regexError ? "This regular expression isn't valid" : "")
-            Picker("Method", selection: $traffic.filter.method) {
-                Text("Any method").tag("ANY")
-                ForEach(HTTPMethods.all + ["CONNECT"], id: \.self) { Text($0).tag($0) }
-            }
-            .frame(width: 120)
-            Picker("Status", selection: $traffic.filter.status) {
-                ForEach(TrafficFilter.StatusRange.allCases) { Text($0.title).tag($0) }
-            }
-            .frame(width: 140)
-            Picker("Type", selection: $traffic.filter.content) {
-                ForEach(TrafficFilter.ContentKind.allCases) { Text($0.title).tag($0) }
-            }
-            .frame(width: 120)
-            Toggle("Decrypted only", isOn: $traffic.filter.onlyDecrypted).toggleStyle(.checkbox)
-            DomainFilterMenu()
-            if traffic.filter.isActive {
-                Button("Reset") {
-                    let domain = traffic.filter.domain
-                    let lists = traffic.filter.domainLists
-                    traffic.filter = TrafficFilter()
-                    traffic.filter.domain = domain
-                    traffic.filter.domainLists = lists
-                }
+            HStack(spacing: 8) {
+                searchField.frame(minWidth: 120)
+                filtersMenu
+                DomainFilterMenu()
+                resetButton
             }
         }
-        .labelsHidden()
         .controlSize(.small)
         .padding(.horizontal, 8).padding(.vertical, 6)
+    }
+
+    private var searchField: some View {
+        @Bindable var traffic = model.traffic
+        return HStack(spacing: 4) {
+            Menu {
+                Picker("Search in", selection: $traffic.filter.scope) {
+                    ForEach(TrafficFilter.SearchScope.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.inline)
+                Divider()
+                Toggle("Regular expression", isOn: $traffic.filter.regex)
+                Toggle("Match case", isOn: $traffic.filter.caseSensitive)
+            } label: {
+                Image(systemName: "magnifyingglass")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.visible)
+            .fixedSize()
+            .help("Search in: \(traffic.filter.scope.title)")
+            TextField(searchPrompt(traffic.filter), text: $traffic.filter.text)
+                .textFieldStyle(.plain)
+                .labelsHidden()
+            if traffic.isSearching { ProgressView().controlSize(.mini) }
+            if traffic.filter.regex { Tag(text: ".*", color: .secondary).help("Regular expression") }
+            if traffic.filter.caseSensitive { Tag(text: "Aa", color: .secondary).help("Match case") }
+            if !traffic.filter.text.isEmpty {
+                Button { traffic.filter.text = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(5)
+        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(.red, lineWidth: traffic.filter.regexError ? 1 : 0))
+        .help(traffic.filter.regexError ? "This regular expression isn't valid" : "")
+    }
+
+    @ViewBuilder private var methodPicker: some View {
+        @Bindable var traffic = model.traffic
+        Picker("Method", selection: $traffic.filter.method) {
+            Text("Any method").tag("ANY")
+            ForEach(HTTPMethods.all + ["CONNECT"], id: \.self) { Text($0).tag($0) }
+        }
+    }
+
+    @ViewBuilder private var statusPicker: some View {
+        @Bindable var traffic = model.traffic
+        Picker("Status", selection: $traffic.filter.status) {
+            ForEach(TrafficFilter.StatusRange.allCases) { Text($0.title).tag($0) }
+        }
+    }
+
+    @ViewBuilder private var typePicker: some View {
+        @Bindable var traffic = model.traffic
+        Picker("Type", selection: $traffic.filter.content) {
+            ForEach(TrafficFilter.ContentKind.allCases) { Text($0.title).tag($0) }
+        }
+    }
+
+    private var pickers: some View {
+        HStack(spacing: 8) {
+            methodPicker.frame(width: 120)
+            statusPicker.frame(width: 140)
+            typePicker.frame(width: 120)
+        }
+        .labelsHidden()
+    }
+
+    private var decryptedToggle: some View {
+        @Bindable var traffic = model.traffic
+        return Toggle("Decrypted only", isOn: $traffic.filter.onlyDecrypted).toggleStyle(.checkbox).fixedSize()
+    }
+
+    /// Compact layout: method, status, type and "decrypted only" in one menu.
+    private var filtersMenu: some View {
+        @Bindable var traffic = model.traffic
+        let f = traffic.filter
+        let count = (f.method != "ANY" ? 1 : 0) + (f.status != .any ? 1 : 0) + (f.content != .any ? 1 : 0) + (f.onlyDecrypted ? 1 : 0)
+        return Menu {
+            methodPicker
+            statusPicker
+            typePicker
+            Toggle("Decrypted only", isOn: $traffic.filter.onlyDecrypted)
+        } label: {
+            Label(count > 0 ? "Filters (\(count))" : "Filters", systemImage: "slider.horizontal.3")
+                .labelStyle(.titleAndIcon)
+        }
+        .fixedSize()
+    }
+
+    @ViewBuilder private var resetButton: some View {
+        @Bindable var traffic = model.traffic
+        if traffic.filter.isActive {
+            Button("Reset") {
+                let domain = traffic.filter.domain
+                let lists = traffic.filter.domainLists
+                traffic.filter = TrafficFilter()
+                traffic.filter.domain = domain
+                traffic.filter.domainLists = lists
+            }
+            .fixedSize()
+        }
     }
 }
 

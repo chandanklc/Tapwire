@@ -30,6 +30,10 @@ or change Tapwire's port in Settings → General.
 - [ ] Right-click → Hide a noisy domain: its calls disappear and it moves to "Hidden by domain filter"; Unhide brings it back.
 - [ ] Filter bar → Domains menu: toggling an entry or "Use Domain Filter" updates the list at once; Clear empties both lists.
 - [ ] Settings → Domains: add `*.example.com` to Hide → example.com and its subdomains are hidden; quit and reopen → still saved.
+- [ ] Sidebar bottom: type in "Filter domains" → only matching domains are listed (also inside the Hidden
+      section, which opens while searching); ✕ clears it.
+- [ ] Make the window narrow: the inspector's tabs move to a second row (then a menu) and Body is always reachable;
+      the filter bar folds Method / Status / Type / Decrypted only into a "Filters" menu; nothing is cut off.
 - [ ] Sidebar shows the "Domain filter on" box with Edit… (opens Settings → Domains) and Turn Off.
 - [ ] Magnifying-glass menu: URL / Headers / Bodies & messages scopes each only match their part.
 - [ ] Regular expression on: `user/\d+` matches; an invalid pattern like `(` gives a red outline. Match case works.
