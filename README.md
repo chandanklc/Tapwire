@@ -1,7 +1,7 @@
 # Tapwire
 
 Tapwire is a macOS HTTP/HTTPS debugging proxy for developers. Use it to watch, pause, edit, mock and
-redirect your Android app's API traffic (phone on Wi-Fi or the emulator) and the Mac's own traffic.
+redirect your app's API traffic (iPhone, Android phone, emulator or Simulator) and the Mac's own traffic.
 
 - Live traffic list with domain sidebar, saved show-only / hide domain lists, filters and search (URL, headers, bodies, WebSocket messages; regex)
 - HTTPS decryption (MITM) per host or for everything, with a per-Mac root certificate; HTTP/2 to apps
@@ -111,6 +111,22 @@ so macOS treats each new build as a different app.
 4. To capture the Mac's own traffic, turn on **System proxy** in the toolbar (admin prompt). Tapwire
    saves your previous proxy settings and restores them on Stop or Quit.
 5. Add hosts to decrypt under **Settings → SSL Proxying** (e.g. `*.myapp.com`), or turn on **Decrypt all**.
+
+## iPhone setup
+
+Tapwire → **Certificates & Device Setup → iPhone** shows these steps with your Mac's address and a QR code.
+
+1. **Wi-Fi proxy:** iPhone on the same Wi-Fi → Settings → Wi-Fi → ⓘ → **Configure Proxy → Manual** →
+   Server: your Mac's IP, Port: `9090`.
+2. **Certificate:** open `http://tapwire.cert` in **Safari** → Download → Allow → Settings → **Profile Downloaded** → Install.
+3. **Full trust (required):** Settings → General → About → **Certificate Trust Settings** → turn on **Tapwire**.
+4. In Tapwire, add your API host to **SSL Proxying** (or turn on Decrypt all).
+
+**iOS Simulator:** it uses the Mac's network, so turn on **Use as System Proxy**. Open `http://127.0.0.1:9090/cert`
+on the Mac, drag the downloaded `Tapwire-CA.crt` onto the Simulator, install it, then turn on full trust as in step 3.
+
+Apps that pin certificates (and some Apple services) won't decrypt. When you're done, set the iPhone's
+proxy back to **Off**.
 
 ## Android setup
 

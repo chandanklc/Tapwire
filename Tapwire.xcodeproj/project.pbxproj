@@ -72,6 +72,7 @@
 		E0AF703201352E89FB0B14A8 /* LocalResponder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D12A012F01892441B6CA97FD /* LocalResponder.swift */; };
 		E22EFD0FDCC293B8AB4E647B /* NIOPosix in Frameworks */ = {isa = PBXBuildFile; productRef = 46950292F73D1CC1E0EA7A6D /* NIOPosix */; };
 		E2E29751688DA2A7DD808BD8 /* ProxyEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB44050193CADD9489BFEDD7 /* ProxyEnvironment.swift */; };
+		EC9AD86EA7221F2F518B50DC /* IPhoneSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08C3385BEC0053308BAF82D8 /* IPhoneSetupView.swift */; };
 		EF14015B65CE75FA031CB561 /* RulesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27AC479DE293367E69A788B /* RulesWindow.swift */; };
 		F580EF3EF61A4ED2E93B9ECE /* PipelineTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2244917C8A714ABA4DAD09AF /* PipelineTypes.swift */; };
 		FB7E4DE2ED40A6A29A36C04C /* EchoServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6890A23811ACA4D7B1CA3653 /* EchoServer.swift */; };
@@ -123,6 +124,7 @@
 /* Begin PBXFileReference section */
 		0309D0928E2D17FD67C54BBE /* PipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineTests.swift; sourceTree = "<group>"; };
 		061555D8046A8EC3167F7D10 /* RequestPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestPipeline.swift; sourceTree = "<group>"; };
+		08C3385BEC0053308BAF82D8 /* IPhoneSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneSetupView.swift; sourceTree = "<group>"; };
 		18B67ACC1926D7B7824FA286 /* RuleEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleEngine.swift; sourceTree = "<group>"; };
 		1C0045036F4FC87A64B8D7A7 /* ProxyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyEngine.swift; sourceTree = "<group>"; };
 		21D166261982D08CED55DA48 /* libcompression.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcompression.tbd; path = usr/lib/libcompression.tbd; sourceTree = SDKROOT; };
@@ -262,6 +264,7 @@
 				4A72D23AAC16B9EE8A8F9417 /* Components.swift */,
 				58F5B1E88A050F5E4040E3EE /* ComposeWindow.swift */,
 				B97542BB7C0B13E5979EC5C8 /* Inspector.swift */,
+				08C3385BEC0053308BAF82D8 /* IPhoneSetupView.swift */,
 				3A192627293CE254186342A9 /* MainWindow.swift */,
 				F27AC479DE293367E69A788B /* RulesWindow.swift */,
 				B939774A5A907C5AA9D3903A /* SettingsView.swift */,
@@ -581,6 +584,7 @@
 				C1C691F05ECA120C5DF2A6AF /* CertificatesWindow.swift in Sources */,
 				7A4379B4CC71ED13C2391BD7 /* Components.swift in Sources */,
 				D75DF088357156F9C39AF2CB /* ComposeWindow.swift in Sources */,
+				EC9AD86EA7221F2F518B50DC /* IPhoneSetupView.swift in Sources */,
 				DBA7ABE65507B7CCAF427498 /* Inspector.swift in Sources */,
 				52A9B9E4DEF42B9F9E95A112 /* MainWindow.swift in Sources */,
 				EF14015B65CE75FA031CB561 /* RulesWindow.swift in Sources */,

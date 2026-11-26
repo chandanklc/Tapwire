@@ -7,7 +7,8 @@ struct CertificatesWindow: View {
     var body: some View {
         TabView {
             MacCertificateView().tabItem { Label("This Mac", systemImage: "laptopcomputer") }
-            AndroidSetupView().tabItem { Label("Android", systemImage: "iphone.gen3") }
+            IPhoneSetupView().tabItem { Label("iPhone", systemImage: "iphone") }
+            AndroidSetupView().tabItem { Label("Android", systemImage: "smartphone") }
         }
         .padding(.top, 6)
         .frame(minWidth: 720, minHeight: 600)

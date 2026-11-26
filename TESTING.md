@@ -87,6 +87,12 @@ or change Tapwire's port in Settings → General.
 - [ ] Compose (⌘N): GET/POST with headers and a JSON body → the response shows below and in the list.
 - [ ] Compose → Load → Paste Raw HTTP Request parses a copied raw request.
 
+## iPhone
+- [ ] Certificates → iPhone shows the Mac's IP, port and a QR code; scanning it with the Camera opens the certificate in Safari.
+- [ ] iPhone Wi-Fi proxy set → http://tapwire.cert/ loads in Safari; Download → Profile Downloaded → Install.
+- [ ] Certificate Trust Settings → Tapwire on → a decrypted host shows its calls with a green lock.
+- [ ] iOS Simulator with System Proxy on and the certificate dragged in + trusted → app traffic is decrypted.
+
 ## Android
 - [ ] Certificates → Android shows the IP, port and QR code; scanning the QR downloads the certificate.
 - [ ] Phone Wi-Fi proxy → http://tapwire.cert/ loads the Tapwire page.

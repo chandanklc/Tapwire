@@ -153,6 +153,15 @@ final class IntegrationTests: XCTestCase {
         XCTAssertTrue(body.contains("BEGIN CERTIFICATE"))
     }
 
+    func testCertificateDownloadDirectFromProxyPort() throws {
+        // What the iPhone / Simulator setup tells people to open (no proxy configured).
+        configure { _ in }
+        let r = try ProcessRunner.runSync("/usr/bin/curl", ["-s", "--noproxy", "*", "-D", "-", "http://127.0.0.1:\(proxyPort)/cert"])
+        XCTAssertTrue(r.stdout.hasPrefix("HTTP/1.1 200"), r.stdout)
+        XCTAssertTrue(r.stdout.lowercased().contains("content-type: application/x-x509-ca-cert"))
+        XCTAssertTrue(r.stdout.contains("BEGIN CERTIFICATE"))
+    }
+
     func testUnreachableUpstreamReturns502() throws {
         configure { _ in }
         let (code, _) = try curl("http://127.0.0.1:1/nothing")
