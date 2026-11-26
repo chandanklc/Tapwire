@@ -58,7 +58,8 @@ struct TapwireApp: App {
                 .environment(model)
                 .frame(minWidth: 1000, minHeight: 600)
         }
-        .defaultSize(width: 1400, height: 850)
+        .defaultSize(width: 1440, height: 900)
+        .windowStyle(.hiddenTitleBar)
         .commands { TapwireCommands(model: model) }
 
         Window("Breakpoints", id: WindowID.breakpoints) {
@@ -76,7 +77,7 @@ struct TapwireApp: App {
         }
         .defaultSize(width: 900, height: 760)
 
-        Window("Certificates & Device Setup", id: WindowID.certificates) {
+        Window("Connect a Device", id: WindowID.certificates) {
             CertificatesWindow().environment(model)
         }
         .defaultSize(width: 820, height: 760)
@@ -97,6 +98,7 @@ struct TapwireCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
     @AppStorage(InspectorPosition.storageKey) private var inspectorPosition = InspectorPosition.bottom.rawValue
+    @AppStorage("layout.sourcesVisible") private var sourcesVisible = true
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -116,6 +118,11 @@ struct TapwireCommands: Commands {
             Button("Export Visible Calls as HAR…") { FileActions.exportHAR(model.traffic.visible) }
         }
         CommandGroup(after: .sidebar) {
+            Button(sourcesVisible ? "Hide Sources" : "Show Sources") { sourcesVisible.toggle() }
+                .keyboardShortcut("s", modifiers: [.command, .control])
+            Button("Search Traffic") { model.searchFocusRequest += 1 }
+                .keyboardShortcut("l")
+            Divider()
             Picker("Call Details", selection: $inspectorPosition) {
                 Text("At the Bottom").tag(InspectorPosition.bottom.rawValue)
                 Text("On the Right").tag(InspectorPosition.right.rawValue)
@@ -149,7 +156,7 @@ struct TapwireCommands: Commands {
             }
             Divider()
             Button("Rules…") { openWindow(id: WindowID.rules) }.keyboardShortcut("r", modifiers: [.command, .shift])
-            Button("Certificates & Device Setup…") { openWindow(id: WindowID.certificates) }
+            Button("Connect a Device…") { openWindow(id: WindowID.certificates) }
         }
         CommandMenu("Call") {
             Button("Repeat") { selected.map(model.repeatRequest) }.keyboardShortcut("r", modifiers: [.command, .option]).disabled(selected == nil)

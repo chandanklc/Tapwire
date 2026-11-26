@@ -226,11 +226,27 @@ server (skipped by a full mock) → response modifications → response breakpoi
 
 ## Layout
 
-Call details show **under the list** by default, so the list has the full window width for URLs, status
-codes and durations. To put them **on the right** instead, use the toolbar button, **View → Call Details**
-or ⌥⌘I. Drag the divider to resize. Tapwire remembers your choice.
+Tapwire's "British GT" look: racing green, sunset gold, burgundy and ivory, in light and dark.
+
+- **Rail** (far left): Traffic, Rules & mocks, Breakpoints (shows how many are paused), Environments,
+  Connect a device, Settings.
+- **Sources**: your traffic grouped by **Devices** (each phone by address; this Mac and emulators
+  together) or as a flat **Hosts** list, each host with an activity sparkline. Click a device to show
+  only its calls. Hide or show the column with ⌃⌘S. "Filter hosts" at the bottom narrows the list.
+- **Top bar**: Recording (click to pause; it starts the proxy when stopped), the search field, Filters,
+  Domains, environment, breakpoints, system proxy, compose, details position and clear.
+- **Call list**: method and status badges, host and path, and a **timeline** bar showing when each call
+  ran and for how long.
+- **Details**: under the list (or on the right, ⌥⌘I) with **Request and Response side by side**, a
+  timing bar (connect, sent, waiting, download) and Repeat / Edit / Breakpoint / Mock / cURL buttons.
+  Each side remembers its last tab.
 
 ## Searching
+
+Type `host:`, `status:`, `method:` or `device:` followed by a value and press space or Return to turn
+it into a chip: `status:4xx`, `status:error`, `method:POST`, `host:*.myapp.com`, `device:192.168.1.52`,
+`device:mac`. Put `!` before the value (`method:!OPTIONS`) or `-` before the key to exclude. ⌘L jumps
+to the search field.
 
 The search field matches **Everything** by default: URLs, headers, rule names, request and response
 bodies (decoded from gzip/deflate/br) and WebSocket messages. Click the magnifying glass to limit it to

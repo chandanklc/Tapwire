@@ -67,6 +67,8 @@ struct TrafficFilter: Equatable, Sendable {
     }
 
     var text = ""
+    /// `key:value` chips from the search field (host:, status:, method:, device:).
+    var tokens: [SearchToken] = []
     var scope = SearchScope.everything
     var regex = false
     var caseSensitive = false
@@ -79,12 +81,13 @@ struct TrafficFilter: Equatable, Sendable {
     var domainLists = DomainFilter()
 
     var isActive: Bool {
-        !text.isEmpty || method != "ANY" || status != .any || content != .any || onlyDecrypted
+        !text.isEmpty || !tokens.isEmpty || method != "ANY" || status != .any || content != .any || onlyDecrypted
     }
 
     func matches(_ e: CapturedExchange) -> Bool {
         if let domain, e.url?.host.lowercased() != domain { return false }
         if domainLists.isActive, !domainLists.allows(host: e.url?.host ?? e.host, port: e.url?.effectivePort) { return false }
+        for t in tokens where !t.matches(e) { return false }
         if onlyDecrypted && !(e.isTLSDecrypted) { return false }
         if method != "ANY" && e.request.method != method { return false }
         switch status {
@@ -164,6 +167,26 @@ final class TrafficStore {
     private(set) var entries: [CapturedExchange] = []
     private(set) var visible: [CapturedExchange] = []
     private(set) var domains: [(name: String, count: Int)] = []
+    /// Clients grouped for the Sources column (this Mac & emulators, then each phone by address).
+    private(set) var devices: [DeviceSummary] = []
+    /// Seven activity buckets per host across the session, for the sparklines.
+    private(set) var hostActivity: [String: [Int]] = [:]
+
+    struct DeviceSummary: Identifiable, Equatable {
+        let id: String
+        let label: String
+        /// Value for a `device:` token.
+        let query: String
+        let isLoopback: Bool
+        var total: Int
+        var hosts: [HostCount]
+        var lastSeen: Date
+    }
+
+    struct HostCount: Equatable, Hashable {
+        let name: String
+        let count: Int
+    }
     var filter = TrafficFilter() { didSet { if filter != oldValue { filterChanged() } } }
     /// True while a search is running in the background.
     private(set) var isSearching = false
@@ -342,7 +365,31 @@ final class TrafficStore {
             visible = entries
         }
         var counts: [String: Int] = [:]
-        for e in entries { counts[e.url?.host.lowercased() ?? e.host, default: 0] += 1 }
+        var perDevice: [String: (loop: Bool, address: String?, total: Int, hosts: [String: Int], last: Date)] = [:]
+        var activity: [String: [Int]] = [:]
+        let start = entries.first?.startedAt.timeIntervalSince1970 ?? 0
+        let span = max(1, (entries.last?.startedAt.timeIntervalSince1970 ?? start) - start)
+        for e in entries {
+            let host = e.url?.host.lowercased() ?? e.host
+            counts[host, default: 0] += 1
+            let loop = ClientDevice.isLoopback(e.clientAddress)
+            let key = loop ? "loopback" : (e.clientAddress ?? "unknown")
+            var d = perDevice[key] ?? (loop, e.clientAddress, 0, [:], e.startedAt)
+            d.total += 1
+            d.hosts[host, default: 0] += 1
+            d.last = max(d.last, e.startedAt)
+            perDevice[key] = d
+            let bucket = min(6, Int((e.startedAt.timeIntervalSince1970 - start) / span * 7))
+            activity[host, default: Array(repeating: 0, count: 7)][bucket] += 1
+        }
+        hostActivity = activity
+        devices = perDevice.map { key, d in
+            DeviceSummary(id: key, label: ClientDevice.label(for: d.loop ? nil : d.address), query: d.loop ? "mac" : (d.address ?? key),
+                          isLoopback: d.loop, total: d.total,
+                          hosts: d.hosts.map { HostCount(name: $0.key, count: $0.value) }.sorted { $0.count > $1.count || ($0.count == $1.count && $0.name < $1.name) },
+                          lastSeen: d.last)
+        }
+        .sorted { $0.isLoopback != $1.isLoopback ? !$0.isLoopback : $0.lastSeen > $1.lastSeen }
         domains = counts.map { ($0.key, $0.value) }.sorted { $0.name < $1.name }
     }
 }

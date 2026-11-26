@@ -4,45 +4,14 @@ import TapwireCore
 
 struct InspectorView: View {
     let exchange: CapturedExchange
+    @Environment(AppModel.self) private var model
     @State private var messageSelection: WebSocketMessage.ID?
+    @AppStorage(InspectorPosition.storageKey) private var position = InspectorPosition.bottom.rawValue
 
-    // The last side and tab you picked are remembered (also across launches), with a separate
-    // tab for the Request and Response sides. WebSocket calls keep their own, starting on Messages.
-    @AppStorage("inspector.side") private var sideRaw = Side.response.rawValue
-    @AppStorage("inspector.tab.request") private var requestTabRaw = Tab.overview.rawValue
-    @AppStorage("inspector.tab.response") private var responseTabRaw = Tab.overview.rawValue
-    @AppStorage("inspector.wsTab.request") private var wsRequestTabRaw = Tab.messages.rawValue
-    @AppStorage("inspector.wsTab.response") private var wsResponseTabRaw = Tab.messages.rawValue
-
-    private var isWebSocket: Bool { exchange.kind == .websocket }
-    private var side: Side { Side(rawValue: sideRaw) ?? .response }
-    private var sideBinding: Binding<Side> { Binding(get: { side }, set: { sideRaw = $0.rawValue }) }
-
-    private var storedTabRaw: String {
-        switch (isWebSocket, side) {
-        case (false, .request): return requestTabRaw
-        case (false, .response): return responseTabRaw
-        case (true, .request): return wsRequestTabRaw
-        case (true, .response): return wsResponseTabRaw
-        }
-    }
-
-    private func storeTab(_ t: Tab) {
-        switch (isWebSocket, side) {
-        case (false, .request): requestTabRaw = t.rawValue
-        case (false, .response): responseTabRaw = t.rawValue
-        case (true, .request): wsRequestTabRaw = t.rawValue
-        case (true, .response): wsResponseTabRaw = t.rawValue
-        }
-    }
-
-    /// The remembered tab, or a sensible default when this call doesn't have it.
-    private var tab: Tab {
-        if let t = Tab(rawValue: storedTabRaw), availableTabs.contains(t) { return t }
-        return isWebSocket ? .messages : .overview
-    }
-
-    private var tabBinding: Binding<Tab> { Binding(get: { tab }, set: { storeTab($0) }) }
+    // Each pane remembers its last tab (also across launches); WebSocket calls keep their own.
+    @AppStorage("inspector.pane.request") private var requestTabRaw = Tab.headers.rawValue
+    @AppStorage("inspector.pane.response") private var responseTabRaw = Tab.body.rawValue
+    @AppStorage("inspector.pane.wsResponse") private var wsResponseTabRaw = Tab.messages.rawValue
 
     enum Side: String, CaseIterable, Identifiable { case request = "Request", response = "Response"; var id: String { rawValue } }
     enum Tab: String, CaseIterable, Identifiable {
@@ -51,94 +20,212 @@ struct InspectorView: View {
         var id: String { rawValue }
     }
 
+    private var isWebSocket: Bool { exchange.kind == .websocket }
+
+    private func tabs(_ side: Side) -> [Tab] {
+        switch side {
+        case .request: return [.headers, .body, .query, .cookies]
+        case .response: return (isWebSocket ? [.messages] : []) + [.body, .headers, .cookies, .overview]
+        }
+    }
+
+    private func tabBinding(_ side: Side) -> Binding<Tab> {
+        Binding(get: {
+            let raw = side == .request ? requestTabRaw : (isWebSocket ? wsResponseTabRaw : responseTabRaw)
+            if let t = Tab(rawValue: raw), tabs(side).contains(t) { return t }
+            return tabs(side)[0]
+        }, set: { t in
+            switch side {
+            case .request: requestTabRaw = t.rawValue
+            case .response: if isWebSocket { wsResponseTabRaw = t.rawValue } else { responseTabRaw = t.rawValue }
+            }
+        })
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
-            // Side and tabs on one row when they fit, on two rows in a narrow inspector,
-            // and tabs as a menu when even one row of tabs doesn't fit.
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    if tab != .messages { sidePicker }
-                    Spacer(minLength: 8)
-                    tabPicker
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    if tab != .messages { sidePicker }
-                    tabPicker
-                }
-                HStack {
-                    if tab != .messages { sidePicker }
-                    tabMenu
-                    Spacer(minLength: 0)
+            timing
+            Group {
+                if position == InspectorPosition.bottom.rawValue {
+                    HSplitView {
+                        pane(.request).frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+                        pane(.response).frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else {
+                    VSplitView {
+                        pane(.request).frame(maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+                        pane(.response).frame(maxWidth: .infinity, minHeight: 160, maxHeight: .infinity)
+                    }
                 }
             }
-            .labelsHidden()
-            .padding(8)
-            Divider()
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 14).padding(.bottom, 12)
         }
+        .background(GT.window)
     }
 
-    private var sidePicker: some View {
-        Picker("", selection: sideBinding) {
-            ForEach(Side.allCases) { Text($0.rawValue).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .fixedSize()
-    }
-
-    private var tabPicker: some View {
-        Picker("", selection: tabBinding) {
-            ForEach(availableTabs) { Text($0.rawValue).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .fixedSize()
-    }
-
-    private var tabMenu: some View {
-        Picker("", selection: tabBinding) {
-            ForEach(availableTabs) { Text($0.rawValue).tag($0) }
-        }
-        .pickerStyle(.menu)
-        .fixedSize()
-    }
-
-    private var availableTabs: [Tab] {
-        let tabs: [Tab] = side == .request ? [.overview, .headers, .query, .cookies, .body] : [.overview, .headers, .cookies, .body]
-        return exchange.kind == .websocket ? [.messages] + tabs : tabs
-    }
+    // MARK: Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Tag(text: exchange.request.method, color: .method(exchange.request.method))
-                if let s = exchange.response?.status { Tag(text: "\(s)", color: .status(s)) }
-                if exchange.kind == .websocket { Tag(text: "WebSocket", color: .purple) }
-                if exchange.kind == .tunnel { Tag(text: "Tunnel", color: .gray) }
-                if exchange.isTLSDecrypted { Image(systemName: "lock.open.fill").foregroundStyle(.green).help("Decrypted HTTPS") }
-                if let env = exchange.environmentName { Tag(text: env, color: Color(hex: exchange.environmentColorHex ?? "#3B82F6")) }
-                ForEach(exchange.matchedRules.filter { !$0.hasPrefix("Env:") }, id: \.self) { Tag(text: $0, color: .pink) }
-                Spacer()
-                Text(Fmt.ms(exchange.timing.completed)).foregroundStyle(.secondary).monospacedDigit()
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                MethodBadge(method: exchange.request.method)
+                ExchangeStatusPill(e: exchange, long: true)
+                urlText.layoutPriority(-1)
+                Text(meta).font(.system(size: 12)).foregroundStyle(GT.text2).lineLimit(1).fixedSize()
+                Spacer(minLength: 8)
+                actions
             }
-            Text(exchange.request.url).font(.system(.callout, design: .monospaced)).textSelection(.enabled).lineLimit(2)
             if let original = exchange.originalURL {
-                HStack(spacing: 4) {
-                    Text(original).strikethrough().foregroundStyle(.secondary)
-                    Image(systemName: "arrow.right")
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.triangle.branch").foregroundStyle(GT.gold)
+                    Text(original).strikethrough().foregroundStyle(GT.text2)
+                    Image(systemName: "arrow.right").foregroundStyle(GT.text2)
                     Text(exchange.request.url)
+                    if let env = exchange.environmentName { Pill(text: env, kind: .mocked, mono: false) }
                 }
-                .font(.system(.caption, design: .monospaced))
+                .font(GT.mono(11.5))
                 .lineLimit(1)
                 .textSelection(.enabled)
             }
+            let rules = exchange.matchedRules.filter { !$0.hasPrefix("Env:") }
+            if !rules.isEmpty || exchange.error != nil {
+                HStack(spacing: 6) {
+                    ForEach(rules, id: \.self) { Pill(text: $0, kind: $0.hasPrefix("Breakpoint") ? .paused : .mocked, mono: false) }
+                    if let err = exchange.error { Text(err).font(.system(size: 11.5)).foregroundStyle(GT.err).lineLimit(2) }
+                }
+            }
         }
-        .padding(10)
+        .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
     }
 
-    @ViewBuilder private var content: some View {
+    private var urlText: some View {
+        let host = exchange.url.map { "\($0.scheme)://\($0.authority)" } ?? ""
+        let rest = exchange.url.map { $0.requestTarget } ?? exchange.request.url
+        return (Text(host).foregroundStyle(GT.text2) + Text(exchange.kind == .tunnel ? "" : rest).foregroundStyle(GT.text))
+            .font(GT.mono(12.5))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .textSelection(.enabled)
+            .help(exchange.request.url)
+    }
+
+    private var meta: String {
+        var parts = [OverviewView.protocolText(exchange)]
+        if exchange.state == .open { parts.append("open") } else if let t = exchange.timing.completed { parts.append(Fmt.ms(t)) }
+        if let r = exchange.response { parts.append(Fmt.bytes(r.bodySize)) }
+        if exchange.kind != .http { parts.append("↑\(Fmt.bytes(exchange.bytesSent)) ↓\(Fmt.bytes(exchange.bytesReceived))") }
+        parts.append(ClientDevice.label(for: exchange.clientAddress))
+        return parts.joined(separator: " · ")
+    }
+
+    private var actions: some View {
+        ViewThatFits(in: .horizontal) {
+            actionButtons(titles: true)
+            actionButtons(titles: false)
+        }
+    }
+
+    private func actionButtons(titles: Bool) -> some View {
+        HStack(spacing: 2) {
+            IconButton(systemImage: "arrow.clockwise", help: "Repeat this request (⌥⌘R)", title: titles ? "Repeat" : nil) {
+                model.repeatRequest(exchange)
+            }
+            .disabled(exchange.kind != .http)
+            IconButton(systemImage: "square.and.pencil", help: "Edit and repeat (⌘E)", title: titles ? "Edit" : nil) {
+                model.editAndRepeat(exchange)
+            }
+            .disabled(exchange.kind != .http)
+            IconButton(systemImage: "pause.octagon", help: "Add a breakpoint for this URL", title: titles ? "Breakpoint" : nil) {
+                model.addBreakpoint(for: exchange)
+            }
+            IconButton(systemImage: "square.3.layers.3d.down.right", help: "Save the response as a mock (⌘⇧M)", title: titles ? "Mock" : nil) {
+                model.saveAsMock(method: exchange.request.method, url: exchange.request.url, response: exchange.response)
+            }
+            .disabled(exchange.response == nil)
+            IconButton(systemImage: "chevron.left.forwardslash.chevron.right", help: "Copy as cURL (⌥⌘C)", title: titles ? "cURL" : nil) {
+                copyToPasteboard(CurlGenerator.command(for: exchange.request))
+            }
+        }
+        .fixedSize()
+    }
+
+    // MARK: Timing
+
+    @ViewBuilder private var timing: some View {
+        let t = exchange.timing
+        if let total = t.completed, total > 0, exchange.kind == .http {
+            let connect = t.connect ?? 0
+            let sent = max(connect, t.requestSent ?? connect)
+            let first = max(sent, t.firstByte ?? sent)
+            HStack(spacing: 12) {
+                GeometryReader { g in
+                    HStack(spacing: 2) {
+                        segment(connect, total, g.size.width, GT.lineStrong)
+                        segment(sent - connect, total, g.size.width, GT.info)
+                        segment(first - sent, total, g.size.width, GT.gold)
+                        segment(max(0, total - first), total, g.size.width, GT.okDot)
+                    }
+                }
+                .frame(height: 8)
+                .clipShape(Capsule())
+                (Text(connect > 0 ? "Connect \(Fmt.ms(connect)) · " : "") +
+                 Text("Sent \(Fmt.ms(sent - connect)) · ") +
+                 Text("Waiting \(Fmt.ms(first - sent))").fontWeight(.semibold).foregroundColor(GT.text) +
+                 Text(" · Download \(Fmt.ms(max(0, total - first)))") +
+                 Text(t.paused > 0 ? " · paused \(Fmt.ms(t.paused))" : ""))
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(GT.text2)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .padding(.horizontal, 16).padding(.bottom, 10)
+        }
+    }
+
+    private func segment(_ v: Double, _ total: Double, _ width: CGFloat, _ color: Color) -> some View {
+        Rectangle().fill(color).frame(width: max(v > 0 ? 2 : 0, width * CGFloat(v / total)))
+    }
+
+    // MARK: Panes
+
+    private func pane(_ side: Side) -> some View {
+        let tab = tabBinding(side)
+        return VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                SectionLabel(side.rawValue).padding(.trailing, 4)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(tabs(side)) { t in
+                            Button { tab.wrappedValue = t } label: {
+                                Text(t.rawValue)
+                                    .font(.system(size: 12.5, weight: .medium))
+                                    .foregroundStyle(tab.wrappedValue == t ? GT.text : GT.text2)
+                                    .padding(.vertical, 8)
+                                    .overlay(alignment: .bottom) {
+                                        Rectangle().fill(tab.wrappedValue == t ? GT.gold : .clear).frame(height: 2)
+                                    }
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 36)
+            .overlay(alignment: .bottom) { Rectangle().fill(GT.line).frame(height: 1) }
+            content(side, tab.wrappedValue)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(GT.panel, in: RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(GT.line, lineWidth: 1))
+        .padding(side == .request && position == InspectorPosition.bottom.rawValue ? .trailing : .bottom, 6)
+    }
+
+    @ViewBuilder private func content(_ side: Side, _ tab: Tab) -> some View {
         switch (side, tab) {
         case (_, .messages): WebSocketMessagesView(exchange: exchange, selection: $messageSelection)
         case (_, .overview): OverviewView(exchange: exchange)

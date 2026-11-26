@@ -267,6 +267,31 @@ final class AppModel {
         settings.sslEntries.append(SSLProxyEntry(pattern: host))
     }
 
+    // MARK: Search chips
+
+    /// Bumped to move keyboard focus to the search field (⌘L).
+    var searchFocusRequest = 0
+
+    /// Replaces any `device:` chip with one for `query` (nil removes it).
+    func setDeviceToken(_ query: String?) {
+        traffic.filter.tokens.removeAll { $0.key == .device }
+        if let query { traffic.filter.tokens.append(SearchToken(key: .device, value: query)) }
+    }
+
+    func addToken(_ text: String) {
+        guard let t = SearchToken.parse(text) else { return }
+        traffic.filter.tokens.removeAll { $0.key == t.key && $0.value.caseInsensitiveCompare(t.value) == .orderedSame }
+        traffic.filter.tokens.append(t)
+    }
+
+    /// Turns `key:value` words typed in the search field into chips.
+    func promoteTypedTokens() {
+        let (tokens, rest) = SearchToken.extract(from: traffic.filter.text)
+        guard !tokens.isEmpty else { return }
+        for t in tokens where !traffic.filter.tokens.contains(t) { traffic.filter.tokens.append(t) }
+        traffic.filter.text = rest.isEmpty ? "" : rest + " "
+    }
+
     // MARK: Domain lists
 
     func hideDomain(_ pattern: String) {

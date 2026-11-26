@@ -89,3 +89,10 @@ Decisions made while building Tapwire, with reasons.
     `example.com`, because that's what people mean by "this site". The "Hide *.parent" shortcut keeps
     common two-part suffixes (co.uk, com.au…) together; it's a small built-in list, not the full Public
     Suffix List.
+27. **"British GT" redesign.** Approved from an HTML mockup (Figma's free plan ran out of calls). Colours
+    are dynamic NSColors (light/dark) in `Theme.swift`; the accent colour asset makes system controls
+    match. Fonts ship with macOS: Copperplate for the crest and titles, SF Mono for data, so nothing is
+    bundled or downloaded. The emblem is an original "TW" crest, not a car maker's mark. The window hides
+    its title bar so the dark rail runs to the top; it can be dragged by its background.
+28. **Devices are client addresses.** A proxy only sees the connecting IP, so phones are listed by
+    address; loopback covers both this Mac and Android emulators (their 10.0.2.2 arrives as 127.0.0.1).

@@ -80,3 +80,46 @@ final class DomainFilterTests: XCTestCase {
         XCTAssertEqual(old.domainFilter, DomainFilter())
     }
 }
+
+final class SearchTokenTests: XCTestCase {
+    func ex(_ method: String, _ url: String, status: Int? = nil, client: String? = "192.168.1.52",
+            state: ExchangeState = .completed, kind: ExchangeKind = .http) -> CapturedExchange {
+        var e = CapturedExchange(sequence: 1, kind: kind, state: state, clientAddress: client,
+                                 request: CapturedRequest(method: method, url: url))
+        if let status { e.response = CapturedResponse(status: status) }
+        return e
+    }
+
+    func testParsing() {
+        XCTAssertEqual(SearchToken.parse("status:4xx"), SearchToken(key: .status, value: "4xx"))
+        XCTAssertEqual(SearchToken.parse("method:!OPTIONS"), SearchToken(key: .method, value: "OPTIONS", negated: true))
+        XCTAssertEqual(SearchToken.parse("-host:google"), SearchToken(key: .host, value: "google", negated: true))
+        XCTAssertEqual(SearchToken.parse("HOST:Api"), SearchToken(key: .host, value: "Api"))
+        XCTAssertNil(SearchToken.parse("orders"))
+        XCTAssertNil(SearchToken.parse("http://x.test"), "unknown key")
+        XCTAssertNil(SearchToken.parse("host:"))
+        let (tokens, rest) = SearchToken.extract(from: "status:5xx  orders method:POST id=42")
+        XCTAssertEqual(tokens.map(\.text), ["status:5xx", "method:POST"])
+        XCTAssertEqual(rest, "orders id=42")
+    }
+
+    func testMatching() {
+        let post201 = ex("POST", "https://api.myapp.com/v1/orders", status: 201)
+        let get404 = ex("GET", "https://cdn.myapp.com/x", status: 404, client: "127.0.0.1")
+        let tunnel = ex("CONNECT", "https://google.com:443", client: "192.168.1.52", state: .open, kind: .tunnel)
+        XCTAssertTrue(SearchToken.parse("status:2xx")!.matches(post201))
+        XCTAssertTrue(SearchToken.parse("status:404")!.matches(get404))
+        XCTAssertFalse(SearchToken.parse("status:4xx")!.matches(post201))
+        XCTAssertTrue(SearchToken.parse("status:tunnel")!.matches(tunnel))
+        XCTAssertTrue(SearchToken.parse("status:pending")!.matches(tunnel))
+        XCTAssertTrue(SearchToken.parse("host:api.")!.matches(post201))
+        XCTAssertTrue(SearchToken.parse("host:*.myapp.com")!.matches(get404))
+        XCTAssertFalse(SearchToken.parse("-host:cdn")!.matches(get404))
+        XCTAssertTrue(SearchToken.parse("method:!GET")!.matches(post201))
+        XCTAssertTrue(SearchToken.parse("device:mac")!.matches(get404))
+        XCTAssertFalse(SearchToken.parse("device:mac")!.matches(post201))
+        XCTAssertTrue(SearchToken.parse("device:1.52")!.matches(post201))
+        XCTAssertEqual(ClientDevice.label(for: "127.0.0.1"), "This Mac & emulators")
+        XCTAssertEqual(ClientDevice.label(for: "192.168.1.52"), "192.168.1.52")
+    }
+}

@@ -22,10 +22,12 @@
 		2818F357DE8279F81A6FF778 /* ClientConnectionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B031AEAA2173B6F85845C680 /* ClientConnectionHandler.swift */; };
 		2D43B7D3B2952D3308327C6B /* JSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D803D91BC2A2626C889FD08 /* JSONTests.swift */; };
 		31604A21A163E4D944005D5C /* X509 in Frameworks */ = {isa = PBXBuildFile; productRef = 5F04F19FC19563252E01BE42 /* X509 */; };
+		3D93C9E0877029848522ABFC /* MainLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9F736F262C96654E49A85E /* MainLayout.swift */; };
 		400BBB855FC9966A31286D96 /* RequestPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061555D8046A8EC3167F7D10 /* RequestPipeline.swift */; };
 		42123BE2A2FE540174DE01C3 /* NIOFoundationCompat in Frameworks */ = {isa = PBXBuildFile; productRef = 463E31CF4FD44B73B78E68F9 /* NIOFoundationCompat */; };
 		456188805220EA0AC93DF83C /* BreakpointEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60B565CB0ED4209F9A0F28DF /* BreakpointEditor.swift */; };
 		488AAEC6849AC86399AA4979 /* CapturedExchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8179CCFB962F3537FA238FBD /* CapturedExchange.swift */; };
+		4A2CAFA9B1EDF71C0A3A100E /* SearchToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AAECD1F815242D68072AB45 /* SearchToken.swift */; };
 		4A62B94B79BF869CD794F6AD /* Exporters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A00038F417CA97635ABEFBA /* Exporters.swift */; };
 		4B095411947C4EFF96058404 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C651360C265FCB70E8D907 /* Settings.swift */; };
 		4E6C2E315C127A297AEEC7E3 /* Patterns.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E453154DDFAB5EAC6732C9 /* Patterns.swift */; };
@@ -57,6 +59,7 @@
 		9A92430650763CD2A05A18D7 /* Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC10AD5B17F2942B3E5901A2 /* Body.swift */; };
 		A52CED2E8CAA52BA76F659BC /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9109DDDDF6CA9207137946E5 /* AppPaths.swift */; };
 		A9F79321C3E0760EF8168FA3 /* RuleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B67ACC1926D7B7824FA286 /* RuleEngine.swift */; };
+		AAE0F33B458D244F932DADD8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9A0460E721B10CC37C80C9 /* Theme.swift */; };
 		AC1D7A68336AE3074461847D /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CD6BD6313DE8FE00ECB86B5 /* AppModel.swift */; };
 		ADAF7DB91F0253694BF63626 /* BreakpointCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E70D36141F38588C8F148930 /* BreakpointCoordinator.swift */; };
 		B5351AA402C92CA59A215DC7 /* TapwireCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7BCB226123084E4F09674EAA /* TapwireCore.framework */; };
@@ -148,11 +151,13 @@
 		7067D6F748993BAB1712885B /* WebSocketTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketTests.swift; sourceTree = "<group>"; };
 		75E73C80C98499C365E99886 /* TapwireCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TapwireCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		783DF2D01750441872A5F926 /* RuleModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleModels.swift; sourceTree = "<group>"; };
+		7AAECD1F815242D68072AB45 /* SearchToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchToken.swift; sourceTree = "<group>"; };
 		7BCB226123084E4F09674EAA /* TapwireCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TapwireCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8179CCFB962F3537FA238FBD /* CapturedExchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturedExchange.swift; sourceTree = "<group>"; };
 		8252CAED3C949043EAA0C135 /* DomainFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainFilterTests.swift; sourceTree = "<group>"; };
 		9109DDDDF6CA9207137946E5 /* AppPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPaths.swift; sourceTree = "<group>"; };
 		9D803D91BC2A2626C889FD08 /* JSONTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONTests.swift; sourceTree = "<group>"; };
+		9F9F736F262C96654E49A85E /* MainLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainLayout.swift; sourceTree = "<group>"; };
 		A0398216FF8150C8A81F0CE7 /* TapwireApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapwireApp.swift; sourceTree = "<group>"; };
 		A154BE26868FC7523EAA33B4 /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		A52AFF0FDDEC2074EAE51829 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
@@ -161,6 +166,7 @@
 		B031AEAA2173B6F85845C680 /* ClientConnectionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientConnectionHandler.swift; sourceTree = "<group>"; };
 		B939774A5A907C5AA9D3903A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B97542BB7C0B13E5979EC5C8 /* Inspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Inspector.swift; sourceTree = "<group>"; };
+		BD9A0460E721B10CC37C80C9 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		C1A03DAFF2051704F6873D05 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C773736A806B675B2C8A5AD0 /* PatternTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternTests.swift; sourceTree = "<group>"; };
 		D12A012F01892441B6CA97FD /* LocalResponder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalResponder.swift; sourceTree = "<group>"; };
@@ -240,6 +246,7 @@
 				FB44050193CADD9489BFEDD7 /* ProxyEnvironment.swift */,
 				18B67ACC1926D7B7824FA286 /* RuleEngine.swift */,
 				783DF2D01750441872A5F926 /* RuleModels.swift */,
+				7AAECD1F815242D68072AB45 /* SearchToken.swift */,
 				68C651360C265FCB70E8D907 /* Settings.swift */,
 			);
 			path = Rules;
@@ -265,9 +272,11 @@
 				58F5B1E88A050F5E4040E3EE /* ComposeWindow.swift */,
 				B97542BB7C0B13E5979EC5C8 /* Inspector.swift */,
 				08C3385BEC0053308BAF82D8 /* IPhoneSetupView.swift */,
+				9F9F736F262C96654E49A85E /* MainLayout.swift */,
 				3A192627293CE254186342A9 /* MainWindow.swift */,
 				F27AC479DE293367E69A788B /* RulesWindow.swift */,
 				B939774A5A907C5AA9D3903A /* SettingsView.swift */,
+				BD9A0460E721B10CC37C80C9 /* Theme.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -565,6 +574,7 @@
 				400BBB855FC9966A31286D96 /* RequestPipeline.swift in Sources */,
 				A9F79321C3E0760EF8168FA3 /* RuleEngine.swift in Sources */,
 				648998969FBED40D91797045 /* RuleModels.swift in Sources */,
+				4A2CAFA9B1EDF71C0A3A100E /* SearchToken.swift in Sources */,
 				4B095411947C4EFF96058404 /* Settings.swift in Sources */,
 				FEA178D07DFC424966DBCAAB /* SystemProxy.swift in Sources */,
 				648296C430F89CEFC871CD4C /* TunnelHandlers.swift in Sources */,
@@ -586,10 +596,12 @@
 				D75DF088357156F9C39AF2CB /* ComposeWindow.swift in Sources */,
 				EC9AD86EA7221F2F518B50DC /* IPhoneSetupView.swift in Sources */,
 				DBA7ABE65507B7CCAF427498 /* Inspector.swift in Sources */,
+				3D93C9E0877029848522ABFC /* MainLayout.swift in Sources */,
 				52A9B9E4DEF42B9F9E95A112 /* MainWindow.swift in Sources */,
 				EF14015B65CE75FA031CB561 /* RulesWindow.swift in Sources */,
 				BB76CB139A47D2B2C7D45714 /* SettingsView.swift in Sources */,
 				59C5708FEBC24426D474B98C /* TapwireApp.swift in Sources */,
+				AAE0F33B458D244F932DADD8 /* Theme.swift in Sources */,
 				611D30B25F615ABEBBFB4334 /* TrafficStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -645,6 +657,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Sources/Tapwire/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
@@ -794,6 +807,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Sources/Tapwire/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";

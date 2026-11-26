@@ -11,6 +11,17 @@ or change Tapwire's port in Settings → General.
 - [ ] Turn it off → System Settings → Network → Wi-Fi → Proxies shows your previous settings again.
 - [ ] Turn it on, quit Tapwire (⌘Q) → proxy settings are restored.
 
+## Look and layout
+- [ ] Light and dark appearance both use the green / gold / burgundy palette; text is readable everywhere.
+- [ ] The window has no title bar: the rail is on the left with the TW crest; the window drags from empty areas.
+- [ ] Rail buttons open Rules, Breakpoints (badge shows paused count), Environments, Connect a device, Settings.
+- [ ] Sources → Devices groups calls by phone address and "This Mac & emulators"; clicking a device adds a `device:` chip.
+- [ ] Typing `status:4xx ` in search makes a chip; ✕ on the chip removes it; ⌘L focuses the search field.
+- [ ] Timeline bars line up with when calls happened; errors are red, tunnels purple.
+- [ ] Details show Request and Response side by side; Repeat / Edit / Breakpoint / Mock / cURL work.
+- [ ] A paused call shows the champagne banner with a running timer; ⌘↩ / Esc / ⌘⌫ still work.
+- [ ] Connect a Device: header, tabs (iPhone / Android & emulator / This Mac), numbered step cards, connected devices strip.
+
 ## Traffic and inspector
 - [ ] `curl -x http://127.0.0.1:9090 http://example.com/` shows up with method, host, path, code, duration, size, time.
 - [ ] Add `example.com` to Settings → SSL Proxying and run `curl -x http://127.0.0.1:9090 https://example.com/`

@@ -10,18 +10,29 @@ struct BreakpointEditorWindow: View {
         NavigationSplitView {
             List(selection: Binding(get: { coordinator.selected?.id }, set: { coordinator.selectedID = $0 })) {
                 ForEach(coordinator.queue) { call in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Tag(text: call.phase == .request ? "REQUEST" : "RESPONSE", color: call.phase == .request ? .blue : .purple)
-                            Text("#\(call.info.sequence)").foregroundStyle(.secondary).monospacedDigit()
-                            if call.clientDisconnected { Image(systemName: "bolt.horizontal.circle").foregroundStyle(.red).help("Client disconnected") }
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            MethodBadge(method: call.request.method, width: 58)
+                            Text(ParsedURL(string: call.request.url)?.requestTarget ?? call.request.url)
+                                .font(GT.mono(12)).lineLimit(1).truncationMode(.middle)
+                            if call.clientDisconnected { Image(systemName: "bolt.horizontal.circle").foregroundStyle(GT.err).help("Client disconnected") }
                         }
-                        Text(call.title).lineLimit(2).font(.callout)
-                        Text(call.info.ruleName).font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Text("\(call.phase == .request ? "Request" : "Response") · \(call.info.ruleName)")
+                                .font(.system(size: 11.5)).foregroundStyle(GT.text2).lineLimit(1)
+                            Spacer()
+                            TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                                Text(PausedBanner.clock(ctx.date.timeIntervalSince(call.info.pausedAt)))
+                                    .font(GT.mono(11.5, .semibold)).foregroundStyle(GT.burgundy)
+                            }
+                        }
                     }
+                    .padding(.vertical, 4)
                     .tag(call.id)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(GT.subtle)
             .navigationSplitViewColumnWidth(min: 200, ideal: 240)
             .overlay {
                 if coordinator.queue.isEmpty {
@@ -66,7 +77,7 @@ struct PausedCallEditor: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TimeoutBanner(call: call)
+            PausedBanner(call: call)
             Form {
                 if call.phase == .request {
                     requestFields
@@ -221,22 +232,7 @@ struct PausedCallEditor: View {
             .fixedSize()
             Button("Reset Edits") { reset() }
             Spacer()
-            Button(role: .destructive) { model.breakpointsCoordinator.resolve(call, .abort) } label: {
-                Label("Abort", systemImage: "xmark.octagon")
-            }
-            .keyboardShortcut(.delete, modifiers: [.command])
-            .help("Drop the connection: the client gets a network error (⌘⌫)")
-            Button { model.breakpointsCoordinator.resolve(call, .continueOriginal) } label: {
-                Label("Cancel (send original)", systemImage: "arrow.uturn.backward")
-            }
-            .keyboardShortcut(.escape, modifiers: [])
-            .help("Ignore edits and continue unchanged (Esc)")
-            Button { model.breakpointsCoordinator.resolve(call, .execute) } label: {
-                Label("Execute", systemImage: "play.fill")
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .buttonStyle(.borderedProminent)
-            .help("Send the edited version (⌘↩)")
+            Text("⌘↩ Execute · Esc Continue unchanged · ⌘⌫ Abort · ⌘[ ⌘] Previous / next").font(.system(size: 11.5)).foregroundStyle(GT.text2)
         }
         .padding(10)
         .background {
@@ -310,36 +306,66 @@ struct PausedCallEditor: View {
 }
 
 /// Elapsed time and a client-timeout warning for a paused call.
-struct TimeoutBanner: View {
+/// Champagne banner over a paused call: what's paused, for how long, and the three decisions.
+struct PausedBanner: View {
     let call: PausedCall
+    @Environment(AppModel.self) private var model
     static let typicalTimeout: Double = 30
+
+    static func clock(_ t: TimeInterval) -> String {
+        let s = max(0, Int(t))
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             let elapsed = ctx.date.timeIntervalSince(call.info.pausedAt)
             let remaining = max(0, Self.typicalTimeout - elapsed)
-            HStack(spacing: 8) {
-                if call.clientDisconnected {
-                    Image(systemName: "bolt.horizontal.circle.fill").foregroundStyle(.red)
-                    Text("The client closed the connection. Executing still runs the call, but the app won't see the result.")
-                } else {
-                    Image(systemName: elapsed > 10 ? "exclamationmark.triangle.fill" : "clock")
-                        .foregroundStyle(elapsed > 10 ? .orange : .secondary)
-                    Text("Paused \(Int(elapsed)) s")
-                        .monospacedDigit()
-                    if remaining > 0 {
-                        Text("· the client may time out in about \(Int(remaining)) s (OkHttp's default read timeout is 10 s)")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("· the client has probably timed out already").foregroundStyle(.orange)
-                    }
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9).fill(call.clientDisconnected ? GT.err : GT.burgundy)
+                    Image(systemName: call.clientDisconnected ? "bolt.horizontal" : "pause.fill")
+                        .font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
                 }
-                Spacer()
-                Text(call.info.ruleName).foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(call.phase == .request ? "Paused before sending to the server" : "Paused before returning to the app")
+                        .font(.system(size: 14, weight: .semibold))
+                    Group {
+                        if call.clientDisconnected {
+                            Text("The app closed the connection. Execute still runs the call, but the app won't see the result.")
+                                .foregroundStyle(GT.err)
+                        } else {
+                            (Text("\(call.request.method) \(call.request.url)").font(GT.mono(11.5)) +
+                             Text(" · waiting ") +
+                             Text(Self.clock(elapsed)).font(GT.mono(12, .semibold)).foregroundColor(GT.burgundy) +
+                             Text(remaining > 0 ? " · the app may give up in about \(Int(remaining)) s" : " · the app has probably timed out"))
+                        }
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(GT.text2)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                }
+                Spacer(minLength: 8)
+                Button("Abort") { model.breakpointsCoordinator.resolve(call, .abort) }
+                    .buttonStyle(GTButtonStyle(kind: .danger))
+                    .keyboardShortcut(.delete, modifiers: [.command])
+                    .help("Drop the connection: the app gets a network error (⌘⌫)")
+                Button("Continue unchanged") { model.breakpointsCoordinator.resolve(call, .continueOriginal) }
+                    .buttonStyle(GTButtonStyle(kind: .secondary))
+                    .keyboardShortcut(.escape, modifiers: [])
+                    .help("Ignore edits and continue unchanged (Esc)")
+                Button { model.breakpointsCoordinator.resolve(call, .execute) } label: {
+                    HStack(spacing: 6) { Text("Execute"); Text("⌘↩").font(GT.mono(11)).opacity(0.8) }
+                }
+                .buttonStyle(GTButtonStyle(kind: .primary))
+                .keyboardShortcut(.return, modifiers: [.command])
+                .help("Send the edited version (⌘↩)")
             }
-            .font(.callout)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(call.clientDisconnected ? Color.red.opacity(0.12) : (elapsed > 10 ? Color.orange.opacity(0.12) : Color.clear))
+            .padding(.horizontal, 18).padding(.vertical, 12)
+            .background(GT.champagne)
+            .overlay(alignment: .bottom) { Coachline() }
         }
     }
 }
