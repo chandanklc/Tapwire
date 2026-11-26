@@ -89,7 +89,7 @@ struct Rail: View {
                 model.rulesTab = .mocks
                 openWindow(id: WindowID.rules)
             }
-            RailButton(systemImage: "pause.octagon", label: model.pausedCount > 0 ? "Breakpoints, \(model.pausedCount) paused" : "Breakpoints",
+            RailButton(systemImage: "pause.circle", label: model.pausedCount > 0 ? "Breakpoints, \(model.pausedCount) paused" : "Breakpoints",
                        badge: model.pausedCount) {
                 if model.pausedCount > 0 {
                     openWindow(id: WindowID.breakpoints)
@@ -360,7 +360,7 @@ struct TopBar: View {
             DomainFilterMenu().controlSize(.small)
             EnvironmentPill()
             Divider().frame(height: 20)
-            IconButton(systemImage: model.settings.breakpointsEnabled ? "pause.octagon.fill" : "pause.octagon",
+            IconButton(systemImage: model.settings.breakpointsEnabled ? "pause.circle.fill" : "pause.circle",
                        help: model.settings.breakpointsEnabled ? "Breakpoints on — click to turn all off (⌘B)" : "Breakpoints off — click to turn on (⌘B)",
                        tint: model.settings.breakpointsEnabled ? GT.racingGreen : GT.text2) {
                 model.settings.breakpointsEnabled.toggle()

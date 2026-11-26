@@ -52,7 +52,7 @@ struct BreakpointEditorWindow: View {
         .toolbar {
             ToolbarItemGroup {
                 Toggle(isOn: Binding(get: { model.settings.breakpointsEnabled }, set: { model.settings.breakpointsEnabled = $0 })) {
-                    Label("Breakpoints enabled", systemImage: "pause.octagon")
+                    Label("Breakpoints enabled", systemImage: "pause.circle")
                 }
                 Button("Continue All") { coordinator.releaseAll() }
                     .disabled(coordinator.queue.isEmpty)

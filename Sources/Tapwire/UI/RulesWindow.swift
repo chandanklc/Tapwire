@@ -8,7 +8,7 @@ struct RulesWindow: View {
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.rulesTab) {
-            BreakpointRulesView().tabItem { Label("Breakpoints", systemImage: "pause.octagon") }.tag(AppModel.RulesTab.breakpoints)
+            BreakpointRulesView().tabItem { Label("Breakpoints", systemImage: "pause.circle") }.tag(AppModel.RulesTab.breakpoints)
             MockRulesView().tabItem { Label("Mocks", systemImage: "theatermasks") }.tag(AppModel.RulesTab.mocks)
             EnvironmentsView().tabItem { Label("Environments", systemImage: "point.3.connected.trianglepath.dotted") }
                 .tag(AppModel.RulesTab.environments)
@@ -121,7 +121,7 @@ struct BreakpointRulesView: View {
                     }
                     .formStyle(.grouped)
                 } else {
-                    EmptyState(title: "No breakpoint selected", systemImage: "pause.octagon",
+                    EmptyState(title: "No breakpoint selected", systemImage: "pause.circle",
                                message: "Add one with +, or right-click a call and choose Add Breakpoint for This URL.")
                 }
             }

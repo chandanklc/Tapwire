@@ -136,7 +136,7 @@ struct InspectorView: View {
                 model.editAndRepeat(exchange)
             }
             .disabled(exchange.kind != .http)
-            IconButton(systemImage: "pause.octagon", help: "Add a breakpoint for this URL", title: titles ? "Breakpoint" : nil) {
+            IconButton(systemImage: "pause.circle", help: "Add a breakpoint for this URL", title: titles ? "Breakpoint" : nil) {
                 model.addBreakpoint(for: exchange)
             }
             IconButton(systemImage: "square.3.layers.3d.down.right", help: "Save the response as a mock (⌘⇧M)", title: titles ? "Mock" : nil) {
