@@ -30,17 +30,24 @@ struct MainWindow: View {
         } detail: {
             // Details under the list (default, so the list gets the full width for URLs, codes and
             // durations) or beside it. The divider can be dragged in both layouts.
-            if inspectorPosition == InspectorPosition.bottom.rawValue {
-                VSplitView {
-                    trafficList.frame(minHeight: 140, idealHeight: 320)
-                    InspectorPane().frame(minHeight: 200, idealHeight: 420)
-                }
-            } else {
-                HSplitView {
-                    trafficList.frame(minWidth: 480, idealWidth: 720)
-                    InspectorPane().frame(minWidth: 360, idealWidth: 520)
+            Group {
+                if inspectorPosition == InspectorPosition.bottom.rawValue {
+                    VSplitView {
+                        trafficList
+                            .frame(maxWidth: .infinity, minHeight: 140, idealHeight: 320, maxHeight: .infinity)
+                        InspectorPane()
+                            .frame(maxWidth: .infinity, minHeight: 200, idealHeight: 420, maxHeight: .infinity)
+                    }
+                } else {
+                    HSplitView {
+                        trafficList
+                            .frame(minWidth: 480, idealWidth: 720, maxWidth: .infinity, maxHeight: .infinity)
+                        InspectorPane()
+                            .frame(minWidth: 360, idealWidth: 520, maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar { MainToolbar() }
         .navigationTitle("Tapwire")
@@ -103,10 +110,12 @@ struct MainToolbar: ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             InspectorPositionButton()
             EnvironmentPicker()
-            Toggle(isOn: $model.settings.breakpointsEnabled) {
+            Button { model.settings.breakpointsEnabled.toggle() } label: {
                 Label("Breakpoints", systemImage: model.settings.breakpointsEnabled ? "pause.octagon.fill" : "pause.octagon")
+                    .foregroundStyle(model.settings.breakpointsEnabled ? Color.orange : Color.secondary)
             }
-            .help("Enable or disable all breakpoints (⌘B)")
+            .help(model.settings.breakpointsEnabled ? "Breakpoints are on. Click to turn them all off (⌘B)"
+                                                    : "Breakpoints are off. Click to turn them on (⌘B)")
             if model.pausedCount > 0 {
                 Button { openWindow(id: WindowID.breakpoints) } label: {
                     Label("\(model.pausedCount) paused", systemImage: "hand.raised.fill")
