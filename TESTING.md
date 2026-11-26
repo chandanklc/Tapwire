@@ -19,6 +19,10 @@ or change Tapwire's port in Settings → General.
 - [ ] A JSON API call: Body → Pretty (coloured), Tree (expand/collapse), Raw, Hex. Copy body works.
 - [ ] An image call shows Image preview; a form POST shows Form; Query and Cookies tabs fill in.
 - [ ] Overview shows timing (bar + numbers) and sizes.
+- [ ] Pick Response → Body, then select another call → it opens on Response → Body too. Switch to Request →
+      Headers, select another call → Request → Headers. Switching sides brings back each side's last tab.
+      Body view mode (Pretty / Raw / Hex) is also kept. All of this survives quitting and reopening.
+- [ ] A WebSocket call still opens on Messages, and an HTTP call afterwards goes back to its remembered tab.
 - [ ] Sidebar: domains with counts; pin one (right-click) → appears under Pinned; selecting filters the list.
 - [ ] Filter bar: search finds text in a response body; method / status / type filters; "Decrypted only".
 - [ ] Sidebar → right-click a domain → Show Only it: only that domain's calls are listed; All traffic's count matches.

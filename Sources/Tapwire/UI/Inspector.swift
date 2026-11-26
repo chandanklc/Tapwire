@@ -4,14 +4,45 @@ import TapwireCore
 
 struct InspectorView: View {
     let exchange: CapturedExchange
-    @State private var side: Side = .response
-    @State private var tab: Tab
     @State private var messageSelection: WebSocketMessage.ID?
 
-    init(exchange: CapturedExchange) {
-        self.exchange = exchange
-        _tab = State(initialValue: exchange.kind == .websocket ? .messages : .overview)
+    // The last side and tab you picked are remembered (also across launches), with a separate
+    // tab for the Request and Response sides. WebSocket calls keep their own, starting on Messages.
+    @AppStorage("inspector.side") private var sideRaw = Side.response.rawValue
+    @AppStorage("inspector.tab.request") private var requestTabRaw = Tab.overview.rawValue
+    @AppStorage("inspector.tab.response") private var responseTabRaw = Tab.overview.rawValue
+    @AppStorage("inspector.wsTab.request") private var wsRequestTabRaw = Tab.messages.rawValue
+    @AppStorage("inspector.wsTab.response") private var wsResponseTabRaw = Tab.messages.rawValue
+
+    private var isWebSocket: Bool { exchange.kind == .websocket }
+    private var side: Side { Side(rawValue: sideRaw) ?? .response }
+    private var sideBinding: Binding<Side> { Binding(get: { side }, set: { sideRaw = $0.rawValue }) }
+
+    private var storedTabRaw: String {
+        switch (isWebSocket, side) {
+        case (false, .request): return requestTabRaw
+        case (false, .response): return responseTabRaw
+        case (true, .request): return wsRequestTabRaw
+        case (true, .response): return wsResponseTabRaw
+        }
     }
+
+    private func storeTab(_ t: Tab) {
+        switch (isWebSocket, side) {
+        case (false, .request): requestTabRaw = t.rawValue
+        case (false, .response): responseTabRaw = t.rawValue
+        case (true, .request): wsRequestTabRaw = t.rawValue
+        case (true, .response): wsResponseTabRaw = t.rawValue
+        }
+    }
+
+    /// The remembered tab, or a sensible default when this call doesn't have it.
+    private var tab: Tab {
+        if let t = Tab(rawValue: storedTabRaw), availableTabs.contains(t) { return t }
+        return isWebSocket ? .messages : .overview
+    }
+
+    private var tabBinding: Binding<Tab> { Binding(get: { tab }, set: { storeTab($0) }) }
 
     enum Side: String, CaseIterable, Identifiable { case request = "Request", response = "Response"; var id: String { rawValue } }
     enum Tab: String, CaseIterable, Identifiable {
@@ -26,14 +57,14 @@ struct InspectorView: View {
             Divider()
             HStack {
                 if tab != .messages {
-                    Picker("", selection: $side) {
+                    Picker("", selection: sideBinding) {
                         ForEach(Side.allCases) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 200)
                 }
                 Spacer()
-                Picker("", selection: $tab) {
+                Picker("", selection: tabBinding) {
                     ForEach(availableTabs) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -45,7 +76,6 @@ struct InspectorView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onChange(of: side) { if !availableTabs.contains(tab) { tab = .overview } }
     }
 
     private var availableTabs: [Tab] {
@@ -266,7 +296,9 @@ struct BodyViewer: View {
         var id: String { rawValue }
     }
 
-    @State private var mode: Mode?
+    /// Last view mode picked (Pretty, Raw, …), used whenever a body supports it.
+    @AppStorage("inspector.bodyMode") private var modeRaw = ""
+    private var mode: Mode? { Mode(rawValue: modeRaw) }
 
     private var decoded: Data { BodyText.decodedBody(data, headers: headers) }
     private var contentType: String { headers.contentType?.lowercased() ?? "" }
@@ -296,7 +328,7 @@ struct BodyViewer: View {
             let current = (mode.flatMap { available.contains($0) ? $0 : nil }) ?? available[0]
             VStack(spacing: 0) {
                 HStack {
-                    Picker("", selection: Binding(get: { current }, set: { mode = $0 })) {
+                    Picker("", selection: Binding(get: { current }, set: { modeRaw = $0.rawValue })) {
                         ForEach(available) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
