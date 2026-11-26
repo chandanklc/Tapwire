@@ -11,6 +11,21 @@ redirect your app's API traffic (iPhone, Android phone, emulator or Simulator) a
 - **Environments**: redirect hosts (prod → staging → local) with extra headers, switch in one click
 - Repeat, Compose, cURL, sessions (`.tapwire`), HAR 1.2 import/export, throttling, menu bar extra
 
+## Design
+
+Tapwire's "British GT" look: racing green, sunset gold, burgundy and ivory, with light and dark modes.
+
+| Light | Dark |
+|---|---|
+| ![Main window, light](docs/design/main-light.png) | ![Main window, dark](docs/design/main-dark.png) |
+
+| Breakpoint paused | Connect a device |
+|---|---|
+| ![Breakpoint paused](docs/design/breakpoint.png) | ![Connect a device](docs/design/devices.png) |
+
+These are the approved design mockups (sample data). The app follows them closely; small details differ
+(for example, phones are listed by IP address, since that's all a proxy can see).
+
 ## Download
 
 Get the latest `Tapwire-<version>.dmg` from [Releases](https://github.com/chandanklc/Tapwire/releases), open it
