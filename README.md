@@ -90,6 +90,17 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" TEAM_ID=TEAMID NOTA
 
 The version comes from `MARKETING_VERSION` in `project.yml`.
 
+## Why does Tapwire ask for my password?
+
+| When | Why | How often |
+|---|---|---|
+| "Tapwire wants to use … app.tapwire.root-ca" | Reads its certificate key from your Keychain to decrypt HTTPS | Once per build; click **Always Allow** |
+| **Install & Trust** certificate | Trusting a certificate is a system security change | Once (and after Regenerate CA) |
+| **Use as System Proxy** on/off | Changing network settings needs admin rights | Each time you turn it on or off |
+
+The Keychain prompt comes back after an update because the app isn't signed with an Apple Developer ID,
+so macOS treats each new build as a different app.
+
 ## Trust the certificate on the Mac
 
 1. Click the shield toolbar button (**Certificates & Device Setup**) → **This Mac**.
