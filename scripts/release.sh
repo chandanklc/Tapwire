@@ -42,15 +42,20 @@ step "Generating the Xcode project"
 xcodegen generate --quiet
 
 step "Building (Release)"
-SIGN_ARGS=(CODE_SIGN_STYLE=Manual)
+# No get-task-allow entitlement in releases (notarization rejects it).
+SIGN_ARGS=(CODE_SIGN_STYLE=Manual CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO)
 if [ -n "$SIGN_IDENTITY" ]; then
-    SIGN_ARGS+=(CODE_SIGN_IDENTITY="$SIGN_IDENTITY" DEVELOPMENT_TEAM="$TEAM_ID" OTHER_CODE_SIGN_FLAGS="--timestamp")
+    # Hardened runtime is required for notarization; app and framework share the Team ID.
+    SIGN_ARGS+=(CODE_SIGN_IDENTITY="$SIGN_IDENTITY" DEVELOPMENT_TEAM="$TEAM_ID" OTHER_CODE_SIGN_FLAGS="--timestamp"
+                ENABLE_HARDENED_RUNTIME=YES)
 else
-    SIGN_ARGS+=(CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=)
+    # Ad-hoc signatures have no Team ID, and the hardened runtime's library validation then refuses
+    # to load TapwireCore.framework ("different Team IDs"), so ad-hoc builds run without it.
+    SIGN_ARGS+=(CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO)
 fi
 xcodebuild -project Tapwire.xcodeproj -scheme Tapwire -configuration Release \
     -destination 'generic/platform=macOS' -derivedDataPath "$BUILD" \
-    ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO ENABLE_HARDENED_RUNTIME=YES "${SIGN_ARGS[@]}" \
+    ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO "${SIGN_ARGS[@]}" \
     clean build | grep -E "error:|warning: .*Sources/|BUILD (SUCCEEDED|FAILED)" || true
 APP="$BUILD/Build/Products/Release/Tapwire.app"
 [ -d "$APP" ] || fail "build failed, see the output above"
@@ -59,6 +64,16 @@ step "Checking the signature"
 codesign --verify --deep --strict "$APP"
 lipo -archs "$APP/Contents/MacOS/Tapwire"
 codesign -dv "$APP" 2>&1 | grep -E "^(Identifier|Authority|TeamIdentifier|Signature)=" || true
+
+step "Checking that the app launches"
+# Loads the app and its framework exactly as a real launch does, then exits before any UI.
+for arch in $(lipo -archs "$APP/Contents/MacOS/Tapwire"); do
+    if [ "$arch" = "x86_64" ] && ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+        echo "skipping x86_64 (Rosetta not installed)"; continue
+    fi
+    arch -"$arch" "$APP/Contents/MacOS/Tapwire" --launch-check || fail "the $arch app does not launch (see the dyld error above)"
+    echo "$arch: ok"
+done
 
 step "Creating the DMG"
 mkdir -p "$DIST"

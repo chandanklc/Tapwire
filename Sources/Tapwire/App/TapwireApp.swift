@@ -44,6 +44,14 @@ struct TapwireApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel.shared
 
+    init() {
+        // Used by scripts/release.sh: reaching this point proves every library loaded.
+        if CommandLine.arguments.contains("--launch-check") {
+            print("Tapwire launch check ok")
+            exit(0)
+        }
+    }
+
     var body: some Scene {
         Window("Tapwire", id: WindowID.main) {
             MainWindow()

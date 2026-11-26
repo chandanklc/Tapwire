@@ -77,3 +77,9 @@ Decisions made while building Tapwire, with reasons.
     a Developer ID identity and a notarytool profile, signs, notarizes and staples it. Without them it
     produces an ad-hoc signed DMG. Signing details come from environment variables, so no personal
     team ID is stored in the project.
+25. **Ad-hoc releases run without the hardened runtime.** With the hardened runtime, library
+    validation only loads frameworks signed by the app's Team ID. Ad-hoc signatures have no Team ID,
+    so 1.0.0 couldn't load TapwireCore.framework and quit at launch. Ad-hoc builds now turn the
+    hardened runtime off. Developer ID builds keep it, since notarization requires it and the app and
+    framework share the Team ID. The release script launches each architecture with
+    `--launch-check` (it exits once every library has loaded) and stops if that fails.
