@@ -83,3 +83,9 @@ Decisions made while building Tapwire, with reasons.
     hardened runtime off. Developer ID builds keep it, since notarization requires it and the app and
     framework share the Team ID. The release script launches each architecture with
     `--launch-check` (it exits once every library has loaded) and stops if that fails.
+26. **Domain filter is a view filter.** Show-only and hide lists (saved in settings.json) only decide
+    what the traffic list shows; calls are still captured, so nothing is lost if a list is too broad,
+    and rules and breakpoints are unaffected. Hide wins over show-only. `*.example.com` also matches
+    `example.com`, because that's what people mean by "this site". The "Hide *.parent" shortcut keeps
+    common two-part suffixes (co.uk, com.au…) together; it's a small built-in list, not the full Public
+    Suffix List.

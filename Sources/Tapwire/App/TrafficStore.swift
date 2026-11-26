@@ -75,6 +75,8 @@ struct TrafficFilter: Equatable, Sendable {
     var content = ContentKind.any
     var onlyDecrypted = false
     var domain: String?
+    /// The saved show-only / hide lists (kept in settings; copied here by the app model).
+    var domainLists = DomainFilter()
 
     var isActive: Bool {
         !text.isEmpty || method != "ANY" || status != .any || content != .any || onlyDecrypted
@@ -82,6 +84,7 @@ struct TrafficFilter: Equatable, Sendable {
 
     func matches(_ e: CapturedExchange) -> Bool {
         if let domain, e.url?.host.lowercased() != domain { return false }
+        if domainLists.isActive, !domainLists.allows(host: e.url?.host ?? e.host, port: e.url?.effectivePort) { return false }
         if onlyDecrypted && !(e.isTLSDecrypted) { return false }
         if method != "ANY" && e.request.method != method { return false }
         switch status {
@@ -261,7 +264,7 @@ final class TrafficStore {
         for (i, e) in entries.enumerated() { index[e.id] = i }
     }
 
-    private var filterActive: Bool { filter.isActive || filter.domain != nil }
+    private var filterActive: Bool { filter.isActive || filter.domain != nil || filter.domainLists.isActive }
 
     private func check(_ e: CapturedExchange, _ matcher: ((String) -> Bool)?) -> Bool {
         var f = filter

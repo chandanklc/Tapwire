@@ -30,6 +30,13 @@ final class AppModel {
     var composeDraftVersion = 0
     /// Rule selected for editing in the Rules window.
     var rulesTab: RulesTab = .breakpoints
+    var settingsTab: SettingsTab = .general
+
+    /// Host of the single selected call, if any.
+    var selectedHost: String? {
+        guard selection.count == 1, let id = selection.first, let e = traffic.entry(id) else { return nil }
+        return e.url?.host.lowercased()
+    }
     var focusedMockRuleID: UUID?
     var focusedBreakpointID: UUID?
     var focusedEnvironmentID: UUID?
@@ -53,6 +60,7 @@ final class AppModel {
             save(environments, AppPaths.environmentsFile)
         }
         traffic.maxEntries = settings.maxEntries
+        traffic.filter.domainLists = settings.domainFilter
         applyTheme()
         breakpointsCoordinator.onPause = { [weak self] in
             NSApp.activate(ignoringOtherApps: true)
@@ -175,6 +183,7 @@ final class AppModel {
     private func settingsChanged(old: AppSettings) {
         save(settings, AppPaths.settingsFile)
         traffic.maxEntries = settings.maxEntries
+        if traffic.filter.domainLists != settings.domainFilter { traffic.filter.domainLists = settings.domainFilter }
         pushConfig()
         if settings.theme != old.theme { applyTheme() }
         if settings.port != old.port || settings.listenOnAllInterfaces != old.listenOnAllInterfaces {
@@ -257,6 +266,18 @@ final class AppModel {
         }
         settings.sslEntries.append(SSLProxyEntry(pattern: host))
     }
+
+    // MARK: Domain lists
+
+    func hideDomain(_ pattern: String) {
+        settings.domainFilter.hide(pattern)
+        if let d = traffic.filter.domain, settings.domainFilter.isHidden(d) { traffic.filter.domain = nil }
+    }
+
+    func showOnlyDomain(_ pattern: String) { settings.domainFilter.showOnly(pattern) }
+    func unhideDomain(_ host: String) { settings.domainFilter.unhide(host) }
+    func removeFromShowOnly(_ host: String) { settings.domainFilter.removeFromShowOnly(host) }
+    func clearDomainLists() { settings.domainFilter = DomainFilter() }
 
     func togglePin(_ domain: String) {
         if let i = settings.pinnedDomains.firstIndex(of: domain) { settings.pinnedDomains.remove(at: i) } else { settings.pinnedDomains.append(domain) }

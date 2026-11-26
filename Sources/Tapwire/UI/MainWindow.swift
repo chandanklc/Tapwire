@@ -140,47 +140,160 @@ struct EnvironmentPicker: View {
 
 struct DomainSidebar: View {
     @Environment(AppModel.self) private var model
+    @State private var showHidden = false
 
     var body: some View {
         let selection = Binding<String?>(
             get: { model.traffic.filter.domain ?? "__all" },
             set: { model.traffic.filter.domain = ($0 == "__all" ? nil : $0) })
+        let lists = model.settings.domainFilter
+        let pinned = model.settings.pinnedDomains
+        let listed = model.traffic.domains.filter { lists.allows(host: $0.name) }
+        let filteredOut = model.traffic.domains.filter { !lists.allows(host: $0.name) }
         List(selection: selection) {
-            Label("All traffic", systemImage: "globe").badge(model.traffic.entries.count).tag("__all")
-            let pinned = model.settings.pinnedDomains
+            Label("All traffic", systemImage: "globe").badge(lists.isActive ? listed.reduce(0) { $0 + $1.count } : model.traffic.entries.count)
+                .tag("__all")
             if !pinned.isEmpty {
                 Section("Pinned") {
-                    ForEach(pinned, id: \.self) { d in
-                        row(d, count: model.traffic.domains.first { $0.name == d }?.count ?? 0, pinned: true)
+                    ForEach(pinned.filter { lists.allows(host: $0) }, id: \.self) { d in
+                        row(d, count: model.traffic.domains.first { $0.name == d }?.count ?? 0, pinned: true, listed: true)
                     }
                 }
             }
             Section("Domains") {
-                ForEach(model.traffic.domains.filter { !pinned.contains($0.name) }, id: \.name) { d in
-                    row(d.name, count: d.count, pinned: false)
+                ForEach(listed.filter { !pinned.contains($0.name) }, id: \.name) { d in
+                    row(d.name, count: d.count, pinned: false, listed: true)
+                }
+            }
+            if !filteredOut.isEmpty {
+                Section(isExpanded: $showHidden) {
+                    ForEach(filteredOut, id: \.name) { d in
+                        row(d.name, count: d.count, pinned: pinned.contains(d.name), listed: false)
+                    }
+                } header: {
+                    Text("Hidden by domain filter (\(filteredOut.count))")
                 }
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom) {
+            if lists.isActive { DomainFilterSummary() }
+        }
     }
 
-    private func row(_ domain: String, count: Int, pinned: Bool) -> some View {
+    private func row(_ domain: String, count: Int, pinned: Bool, listed: Bool) -> some View {
         let decrypted = model.engineConfiguration.shouldDecrypt(host: domain, port: 443)
+        let lists = model.settings.domainFilter
+        let parent = DomainFilter.parentWildcard(for: domain)
         return Label {
-            Text(domain).lineLimit(1).truncationMode(.middle)
+            Text(domain).lineLimit(1).truncationMode(.middle).foregroundStyle(listed ? .primary : .secondary)
         } icon: {
-            Image(systemName: pinned ? "pin.fill" : (decrypted ? "lock.open" : "network"))
-                .foregroundStyle(pinned ? .orange : (decrypted ? .green : .secondary))
+            if !listed {
+                Image(systemName: "eye.slash").foregroundStyle(.secondary)
+            } else {
+                Image(systemName: pinned ? "pin.fill" : (decrypted ? "lock.open" : "network"))
+                    .foregroundStyle(pinned ? .orange : (decrypted ? .green : .secondary))
+            }
         }
         .badge(count)
         .tag(domain)
         .contextMenu {
+            if lists.isHidden(domain) {
+                Button("Unhide \(domain)") { model.unhideDomain(domain) }
+            } else if !listed {
+                Button("Also Show \(domain)") { model.showOnlyDomain(domain) }
+            } else {
+                Button(lists.activeShowOnly.isEmpty ? "Show Only \(domain)" : "Also Show \(domain)") { model.showOnlyDomain(domain) }
+                if let parent, parent != "*." + domain {
+                    Button(lists.activeShowOnly.isEmpty ? "Show Only \(parent)" : "Also Show \(parent)") { model.showOnlyDomain(parent) }
+                }
+                if lists.isShownOnly(domain) {
+                    Button("Remove from Show Only") { model.removeFromShowOnly(domain) }
+                }
+                Divider()
+                Button("Hide \(domain)") { model.hideDomain(domain) }
+                if let parent {
+                    Button("Hide \(parent)") { model.hideDomain(parent) }
+                }
+            }
+            Divider()
             Button(pinned ? "Unpin" : "Pin") { model.togglePin(domain) }
             Button("Enable SSL Proxying for \(domain)") { model.addSSLHost(domain) }
             Button("Copy Domain") { copyToPasteboard(domain) }
             Divider()
             Button("Remove Calls", role: .destructive) { model.traffic.removeDomain(domain) }
         }
+    }
+}
+
+/// Bottom of the sidebar while domain lists are filtering.
+struct DomainFilterSummary: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        let lists = model.settings.domainFilter
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Domain filter on", systemImage: "line.3.horizontal.decrease.circle.fill")
+                .font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor)
+            Text(DomainFilterMenu.summary(lists)).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            HStack {
+                Button("Edit…") { model.settingsTab = .domains; openSettings() }
+                Button("Turn Off") { model.settings.domainFilter.enabled = false }
+            }
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(.bar)
+    }
+}
+
+/// Filter bar menu for the saved domain lists.
+struct DomainFilterMenu: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openSettings) private var openSettings
+
+    static func summary(_ f: DomainFilter) -> String {
+        var parts: [String] = []
+        let show = f.activeShowOnly.map(\.pattern), hide = f.activeHidden.map(\.pattern)
+        if !show.isEmpty { parts.append("Showing only " + show.prefix(3).joined(separator: ", ") + (show.count > 3 ? " +\(show.count - 3)" : "")) }
+        if !hide.isEmpty { parts.append("Hiding " + hide.prefix(3).joined(separator: ", ") + (hide.count > 3 ? " +\(hide.count - 3)" : "")) }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        @Bindable var model = model
+        let lists = model.settings.domainFilter
+        Menu {
+            Toggle("Use Domain Filter", isOn: $model.settings.domainFilter.enabled)
+            if !lists.showOnly.isEmpty {
+                Section("Show only") {
+                    ForEach($model.settings.domainFilter.showOnly) { $e in Toggle(e.pattern, isOn: $e.enabled) }
+                }
+            }
+            if !lists.hidden.isEmpty {
+                Section("Hide") {
+                    ForEach($model.settings.domainFilter.hidden) { $e in Toggle(e.pattern, isOn: $e.enabled) }
+                }
+            }
+            if lists.showOnly.isEmpty && lists.hidden.isEmpty {
+                Text("Right-click a domain in the sidebar to show only it or hide it.")
+            }
+            Divider()
+            if let d = model.traffic.filter.domain ?? model.selectedHost {
+                Button("Show Only \(d)") { model.showOnlyDomain(d) }
+                Button("Hide \(d)") { model.hideDomain(d) }
+                Divider()
+            }
+            Button("Edit Domain Filter…") { model.settingsTab = .domains; openSettings() }
+            Button("Clear Domain Filter") { model.clearDomainLists() }.disabled(lists.showOnly.isEmpty && lists.hidden.isEmpty)
+        } label: {
+            Label("Domains", systemImage: lists.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                .labelStyle(.titleAndIcon)
+        }
+        .fixedSize()
+        .help(lists.isActive ? Self.summary(lists) : "Show only or hide domains")
     }
 }
 
@@ -236,11 +349,14 @@ struct FilterBar: View {
             }
             .frame(width: 120)
             Toggle("Decrypted only", isOn: $traffic.filter.onlyDecrypted).toggleStyle(.checkbox)
+            DomainFilterMenu()
             if traffic.filter.isActive {
                 Button("Reset") {
                     let domain = traffic.filter.domain
+                    let lists = traffic.filter.domainLists
                     traffic.filter = TrafficFilter()
                     traffic.filter.domain = domain
+                    traffic.filter.domainLists = lists
                 }
             }
         }

@@ -21,6 +21,12 @@ or change Tapwire's port in Settings → General.
 - [ ] Overview shows timing (bar + numbers) and sizes.
 - [ ] Sidebar: domains with counts; pin one (right-click) → appears under Pinned; selecting filters the list.
 - [ ] Filter bar: search finds text in a response body; method / status / type filters; "Decrypted only".
+- [ ] Sidebar → right-click a domain → Show Only it: only that domain's calls are listed; All traffic's count matches.
+      Also Show adds a second domain; Show Only *.parent works for subdomains.
+- [ ] Right-click → Hide a noisy domain: its calls disappear and it moves to "Hidden by domain filter"; Unhide brings it back.
+- [ ] Filter bar → Domains menu: toggling an entry or "Use Domain Filter" updates the list at once; Clear empties both lists.
+- [ ] Settings → Domains: add `*.example.com` to Hide → example.com and its subdomains are hidden; quit and reopen → still saved.
+- [ ] Sidebar shows the "Domain filter on" box with Edit… (opens Settings → Domains) and Turn Off.
 - [ ] Magnifying-glass menu: URL / Headers / Bodies & messages scopes each only match their part.
 - [ ] Regular expression on: `user/\d+` matches; an invalid pattern like `(` gives a red outline. Match case works.
 - [ ] With a few thousand calls, typing in the search field stays smooth (a small spinner shows while bodies are searched).

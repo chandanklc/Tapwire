@@ -1,13 +1,21 @@
 import SwiftUI
 import TapwireCore
 
+enum SettingsTab: Hashable {
+    case general, ssl, domains, upstream, throttling
+}
+
 struct SettingsView: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
-        TabView {
-            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }
-            SSLSettings().tabItem { Label("SSL Proxying", systemImage: "lock.open") }
-            UpstreamSettings().tabItem { Label("External Proxy", systemImage: "arrow.triangle.branch") }
-            ThrottleSettingsView().tabItem { Label("Throttling", systemImage: "tortoise") }
+        @Bindable var model = model
+        TabView(selection: $model.settingsTab) {
+            GeneralSettings().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
+            SSLSettings().tabItem { Label("SSL Proxying", systemImage: "lock.open") }.tag(SettingsTab.ssl)
+            DomainFilterSettings().tabItem { Label("Domains", systemImage: "line.3.horizontal.decrease.circle") }.tag(SettingsTab.domains)
+            UpstreamSettings().tabItem { Label("External Proxy", systemImage: "arrow.triangle.branch") }.tag(SettingsTab.upstream)
+            ThrottleSettingsView().tabItem { Label("Throttling", systemImage: "tortoise") }.tag(SettingsTab.throttling)
         }
         .frame(width: 620, height: 500)
     }
@@ -190,5 +198,71 @@ struct MenuBarContent: View {
         Divider()
         Button("Open Tapwire") { NSApp.activate(ignoringOtherApps: true); openWindow(id: WindowID.main) }
         Button("Quit Tapwire") { NSApp.terminate(nil) }.keyboardShortcut("q")
+    }
+}
+
+struct DomainFilterSettings: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle("Use the domain filter in the traffic list", isOn: $model.settings.domainFilter.enabled).toggleStyle(.switch)
+            Text("Calls are still recorded and still go through rules; this only decides what the list shows. "
+                 + "Wildcards: *.example.com (also matches example.com itself), api-*.example.com, optional :port.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 12) {
+                DomainListEditor(title: "Show only these", empty: "Empty: every domain is shown.",
+                                 entries: $model.settings.domainFilter.showOnly)
+                DomainListEditor(title: "Hide these", empty: "Empty: nothing is hidden.",
+                                 entries: $model.settings.domainFilter.hidden)
+            }
+            .disabled(!model.settings.domainFilter.enabled)
+            Text("If a domain matches both lists, it's hidden. Tip: right-click a domain in the sidebar to add it.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(20)
+    }
+}
+
+private struct DomainListEditor: View {
+    let title: String
+    let empty: String
+    @Binding var entries: [DomainFilterEntry]
+    @State private var newPattern = ""
+    @State private var selection = Set<UUID>()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.headline)
+            Table($entries, selection: $selection) {
+                TableColumn("On") { $e in Toggle("", isOn: $e.enabled).labelsHidden() }.width(30)
+                TableColumn("Domain") { $e in
+                    TextField("*.example.com", text: $e.pattern).textFieldStyle(.plain).font(.system(.body, design: .monospaced))
+                }
+            }
+            .tableStyle(.bordered(alternatesRowBackgrounds: true))
+            .overlay {
+                if entries.isEmpty { Text(empty).font(.caption).foregroundStyle(.secondary) }
+            }
+            HStack(spacing: 4) {
+                TextField("Add domain", text: $newPattern).textFieldStyle(.roundedBorder).onSubmit(add)
+                Button("Add", action: add).disabled(newPattern.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button {
+                    entries.removeAll { selection.contains($0.id) }
+                    selection.removeAll()
+                } label: { Image(systemName: "minus") }
+                    .disabled(selection.isEmpty)
+                    .help("Remove selected")
+            }
+            .controlSize(.small)
+        }
+    }
+
+    private func add() {
+        let p = newPattern.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !p.isEmpty else { return }
+        if !entries.contains(where: { $0.pattern.lowercased() == p }) { entries.append(DomainFilterEntry(pattern: p)) }
+        newPattern = ""
     }
 }

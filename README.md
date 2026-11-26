@@ -3,7 +3,7 @@
 Tapwire is a macOS HTTP/HTTPS debugging proxy for developers. Use it to watch, pause, edit, mock and
 redirect your Android app's API traffic (phone on Wi-Fi or the emulator) and the Mac's own traffic.
 
-- Live traffic list with domain sidebar, filters and search (URL, headers, bodies, WebSocket messages; regex)
+- Live traffic list with domain sidebar, saved show-only / hide domain lists, filters and search (URL, headers, bodies, WebSocket messages; regex)
 - HTTPS decryption (MITM) per host or for everything, with a per-Mac root certificate; HTTP/2 to apps
 - **WebSocket messages**: every frame in both directions, with a Messages tab
 - **Breakpoints**: pause a request or response, edit anything, then Execute / Abort / Cancel
@@ -204,6 +204,20 @@ bodies (decoded from gzip/deflate/br) and WebSocket messages. Click the magnifyi
 URL, Headers or Bodies & messages, or to turn on **Regular expression** and **Match case**. Body searches
 run in the background, so typing stays fast with thousands of calls. Inside a body, ⌘F opens a find bar
 (⌘G / ⌘⇧G for next and previous).
+
+## Domain filter
+
+Keep the list focused on the APIs you care about. Right-click a domain in the sidebar:
+
+- **Show Only api.myapp.com** (or **Show Only \*.myapp.com**) lists just that domain. Add more with **Also Show**.
+- **Hide graph.facebook.com** (or **Hide \*.facebook.com**) removes noisy domains such as analytics, ads and CDNs.
+
+Hidden domains move to a dimmed **Hidden by domain filter** section at the bottom of the sidebar,
+where you can unhide them. The **Domains** menu in the filter bar turns each entry on or off, or the
+whole filter. Edit both lists in **Settings → Domains**. Wildcards work as in the rest of Tapwire;
+`*.myapp.com` also matches `myapp.com`, and `:port` limits an entry to one port. A domain on both lists
+is hidden. The lists are saved, and they only change what's shown: calls are still recorded, and
+rules and breakpoints still apply.
 
 ## WebSockets
 

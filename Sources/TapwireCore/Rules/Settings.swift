@@ -111,13 +111,15 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var hasCompletedOnboarding: Bool = false
     /// Offer HTTP/2 to clients in decrypted HTTPS connections (the server side stays HTTP/1.1).
     public var http2Enabled: Bool = true
+    /// Show-only / hide domain lists for the traffic list.
+    public var domainFilter = DomainFilter()
 
     public init() {}
 
     private enum K: String, CodingKey {
         case port, listenOnAllInterfaces, startProxyOnLaunch, sslEntries, decryptAll, externalProxy, memoryBodyLimitMB,
              captureBodyLimitMB, maxEntries, throttle, theme, breakpointsEnabled, verifyUpstreamCertificates, pinnedDomains,
-             activeEnvironmentID, hasCompletedOnboarding, http2Enabled
+             activeEnvironmentID, hasCompletedOnboarding, http2Enabled, domainFilter
     }
 
     public init(from decoder: Decoder) throws {
@@ -140,6 +142,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         activeEnvironmentID = try c.decodeIfPresent(UUID.self, forKey: .activeEnvironmentID)
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
         http2Enabled = try c.decodeIfPresent(Bool.self, forKey: .http2Enabled) ?? d.http2Enabled
+        domainFilter = try c.decodeIfPresent(DomainFilter.self, forKey: .domainFilter) ?? d.domainFilter
     }
 }
 
